@@ -185,10 +185,12 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                                 {formatDateTime(a.data_hora)}
                             </td>
                             <td className="py-5">
-                                <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase ${
-                                    a.estado === 'Planeamento' ? 'bg-amber-100 text-amber-600' :
-                                    a.estado === 'Em Curso' ? 'bg-blue-100 text-blue-600' :
-                                    a.estado === 'Concluída' ? 'bg-emerald-100 text-emerald-600' :
+                                {/* AS CORES ATUALIZADAS AQUI */}
+                                <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${
+                                    a.estado === 'Planeamento' ? 'bg-amber-100 text-amber-700' :
+                                    a.estado === 'Em Curso' ? 'bg-blue-100 text-blue-700' :
+                                    a.estado === 'Concluída' ? 'bg-emerald-100 text-emerald-700' :
+                                    a.estado === 'Cancelada' ? 'bg-red-100 text-red-700' :
                                     'bg-slate-100 text-slate-500'
                                 }`}>
                                     {a.estado}

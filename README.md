@@ -1,74 +1,59 @@
-# React + TypeScript + Vite
+# WeDo - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este é o repositório frontend da plataforma **WeDo**, uma aplicação web focada na colaboração de equipas (Squads), gestão de atividades (Actions) e interação entre a comunidade (Amigos).
 
-Currently, two official plugins are available:
+O projeto foi construído com foco em performance, modularidade e uma interface de utilizador limpa e reativa.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Tecnologias Utilizadas
 
-## React Compiler
+* **[React](https://react.dev/):** Biblioteca principal para construção da interface.
+* **[TypeScript](https://www.typescriptlang.org/):** Adiciona tipagem estática ao JavaScript para maior segurança e facilidade de manutenção.
+* **[Vite](https://vitejs.dev/):** Ferramenta de build e servidor de desenvolvimento ultra-rápido.
+* **[Tailwind CSS](https://tailwindcss.com/):** Framework de CSS utilitário utilizado para todo o design e animações da interface.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Pré-requisitos
 
-## Expanding the ESLint configuration
+Antes de começares, certifica-te de que tens instalado na tua máquina:
+* **Node.js** (versão 18 ou superior)
+* **O Backend do WeDo** (`projeto-asw-main`) configurado e a correr localmente.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+> **Importante:** O Frontend assume que a API do Backend está a correr no endereço `http://localhost:3000`. Se o backend não estiver ativo, não conseguirás fazer login ou carregar dados.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Instalação e Execução (Local)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Para correres este projeto no teu computador, segue estes passos no teu terminal:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1. **Navega para a pasta do projeto:**
+   ```bash
+   cd wedo-frontend
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. **Instala as dependências:**
+   Isto irá descarregar o React, Tailwind e todas as ferramentas necessárias.
+   ```bash
+   npm install
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+3. **Inicia o servidor de desenvolvimento:**
+   ```bash
+   npm run dev
+   ```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-npm run dev
+4. **Abre a aplicação:**
+   O terminal irá mostrar um link (geralmente `http://localhost:5173`). Clica nele ou copia para o teu browser favorito.
+
+## Estrutura Principal do Projeto
+
+O código está organizado de forma modular dentro da pasta `src/components/`, separando cada secção para facilitar a manutenção:
+
+* `UserPortal.tsx`: O "cérebro" da interface que gere a navegação (Sidebar) e decide qual o ecrã a mostrar.
+* `user/UserProfile.tsx`: Edição de dados do utilizador, alteração de cor de perfil, e exibição de XP e Streak.
+* `user/UserSquads.tsx`: Pesquisa, criação e gestão de grupos, incluindo a visualização de membros e Actions ativas.
+* `user/UserActions.tsx`: Visão global de todas as missões e tarefas agrupadas pelos Squads do utilizador.
+* `user/UserFriends.tsx`: O diretório geral de todos os membros da comunidade WeDo.
+
+## Comandos Úteis
+
+* `npm run dev` - Inicia o servidor local para desenvolvimento com Hot-Module-Replacement (HMR).
+* `npm run build` - Compila o projeto para produção (gera a pasta `dist` com os ficheiros otimizados).
+* `npm run lint` - Corre o ESLint para encontrar e corrigir problemas no código TypeScript/React.

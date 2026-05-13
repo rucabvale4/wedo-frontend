@@ -32,60 +32,60 @@ export const UserManagement = ({ token }: UserManagementProps) => {
 
     // FUNÇÕES DE AÇÃO
     const handleSaveUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = selectedUser ? `http://localhost:3000/api/users/${selectedUser.id}` : 'http://localhost:3000/api/users';
-    const method = selectedUser ? 'PATCH' : 'POST';
+        e.preventDefault();
+        const url = selectedUser ? `http://localhost:3000/api/users/${selectedUser.id}` : 'http://localhost:3000/api/users';
+        const method = selectedUser ? 'PATCH' : 'POST';
 
-    const bodyData: any = { ...formData };
-    if (selectedUser && !bodyData.password) delete bodyData.password;
+        const bodyData: any = { ...formData };
+        if (selectedUser && !bodyData.password) delete bodyData.password;
 
-    try {
-        const res = await fetch(url, {
-            method,
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify(bodyData)
-        });
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify(bodyData)
+            });
 
-        if (res.ok) {
-            setShowUserModal(false);
-            fetchData();
-            setSuccessMessage(selectedUser ? 'Utilizador atualizado!' : 'Utilizador registado!');
-            setTimeout(() => setSuccessMessage(''), 1500);
-        } else {
-            // DAR VOZ AO ERRO
-            const errorData = await res.json();
-            alert(`Falha: ${errorData.error || 'Verifique os dados'}`);
+            if (res.ok) {
+                setShowUserModal(false);
+                fetchData();
+                setSuccessMessage(selectedUser ? 'Utilizador atualizado!' : 'Utilizador registado!');
+                setTimeout(() => setSuccessMessage(''), 1500);
+            } else {
+                // DAR VOZ AO ERRO
+                const errorData = await res.json();
+                alert(`Falha: ${errorData.error || 'Verifique os dados'}`);
+            }
+        } catch (err) {
+            alert("Erro ao guardar utilizador.");
         }
-    } catch (err) {
-        alert("Erro ao guardar utilizador.");
-    }
-};
+    };
 
     const executeDelete = async () => {
-    if (!userToDelete) return;
-    try {
-        const res = await fetch(`http://localhost:3000/api/users/${userToDelete}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        if (!userToDelete) return;
+        try {
+            const res = await fetch(`http://localhost:3000/api/users/${userToDelete}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-        if (res.ok) {
-            fetchData();
-            setShowDeleteModal(false);
+            if (res.ok) {
+                fetchData();
+                setShowDeleteModal(false);
 
-            // --- NOTIFICAÇÃO DISCRETA ---
-            setSuccessMessage('Utilizador removido!');
-            
-            // O mesmo tempo curto (1.5s) que definimos para os outros
-            setTimeout(() => setSuccessMessage(''), 1500);
+                // --- NOTIFICAÇÃO DISCRETA ---
+                setSuccessMessage('Utilizador removido!');
+                
+                // O mesmo tempo curto (1.5s) que definimos para os outros
+                setTimeout(() => setSuccessMessage(''), 1500);
+            }
+        } catch (err) {
+            alert("Erro ao apagar.");
         }
-    } catch (err) {
-        alert("Erro ao apagar.");
-    }
-};
+    };
 
     return (
         <section className="bg-white rounded-[2.5rem] shadow-sm border p-10 animate-in fade-in duration-500">
@@ -118,7 +118,12 @@ export const UserManagement = ({ token }: UserManagementProps) => {
                             <td className="py-5 font-bold text-slate-700">{u.nome}</td>
                             <td className="py-5 text-slate-500 text-sm">{u.email}</td>
                             <td className="py-5">
-                                <span className="text-[10px] font-black bg-slate-100 px-3 py-1 rounded-md uppercase text-slate-500">
+                                {/* CORES ATUALIZADAS: ADMIN a Roxo e USER a Cinzento */}
+                                <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-widest ${
+                                    u.role === 'ADMIN' 
+                                        ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}>
                                     {u.role}
                                 </span>
                             </td>
