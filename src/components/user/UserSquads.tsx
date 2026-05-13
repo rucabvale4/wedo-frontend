@@ -8,21 +8,17 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
     const [mySquads, setMySquads] = useState<any[]>([]);
     const [globalSquads, setGlobalSquads] = useState<any[]>([]);
     
-    // Controlo de Vistas e Modais
     const [activeView, setActiveView] = useState<'list' | 'detail'>('list');
     const [selectedSquad, setSelectedSquad] = useState<any>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     
-    // Action Modal e Formulário
     const [showCreateActionModal, setShowCreateActionModal] = useState(false);
     const [actionForm, setActionForm] = useState({ titulo: '', categoria: '', descricao: '', dataHora: '' });
     
-    // NOVO: Estados para o Modal de Cancelar
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [actionToCancel, setActionToCancel] = useState<number | null>(null);
     
-    // Formulários de Grupo
     const [createForm, setCreateForm] = useState({ nomeSquad: '', descricao: '' });
     const [editForm, setEditForm] = useState({ nomeSquad: '', descricao: '' });
     const [isEditing, setIsEditing] = useState(false);
@@ -57,7 +53,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
         return 'Concluída';
     };
 
-    // --- LÓGICA DE DADOS ---
 
     const fetchMySquads = async () => {
         try {
@@ -189,13 +184,11 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
         }
     };
 
-    // NOVO: Abre o modal e guarda qual é a action que queremos cancelar
     const confirmCancelAction = (actionId: number) => {
         setActionToCancel(actionId);
         setShowCancelModal(true);
     };
 
-    // NOVO: Executa o cancelamento verdadeiro se o utilizador disser que "Sim" no modal
     const executeCancelAction = async () => {
         if (!actionToCancel) return;
         
@@ -225,7 +218,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
         setActiveView('detail');
     };
 
-    // --- INTERFACE ---
 
     return (
         <section className="animate-in fade-in duration-500">
@@ -238,7 +230,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* VISTA 1: LISTAGEM DOS GRUPOS */}
             {activeView === 'list' && (
                 <>
                     <header className="mb-12 flex justify-between items-end">
@@ -296,7 +287,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                 </>
             )}
 
-            {/* VISTA 2: DETALHES DO GRUPO (AGORA COM A LISTA DE ACTIONS) */}
             {activeView === 'detail' && selectedSquad && (
                 <div className="animate-in slide-in-from-right-8 duration-500 max-w-5xl">
                     
@@ -331,7 +321,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                                             </span>
                                         </div>
 
-                                        {/* MEMBROS */}
                                         <div className="pt-8 border-t border-slate-100 mt-8">
                                             <h3 className="text-xl font-bold text-slate-800 mb-4">Membros ({selectedSquad.users?.length || 0})</h3>
                                             <div className="flex flex-wrap gap-4">
@@ -383,7 +372,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                                                                 </div>
                                                             </div>
                                                             
-                                                            {/* O botão agora chama confirmCancelAction em vez do cancelamento direto */}
                                                             {estadoDinamico === 'Planeamento' && (
                                                                 <button 
                                                                     onClick={() => confirmCancelAction(action.id)}
@@ -430,7 +418,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: CRIAR SQUAD */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
@@ -447,7 +434,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: CRIAR ACTION */}
             {showCreateActionModal && (
                 <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
@@ -497,7 +483,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* NOVO MODAL: CONFIRMAR CANCELAMENTO DE ACTION */}
             {showCancelModal && (
                 <div className="fixed inset-0 z-[500] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 text-center">
@@ -524,7 +509,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: PROCURAR SQUADS */}
             {showSearchModal && (
                 <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[80vh]">

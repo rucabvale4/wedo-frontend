@@ -13,7 +13,6 @@ export const Navbar = ({ setView, currentView, onLogout }: NavbarProps) => {
 
     return (
         <nav className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shadow-lg sticky top-0 z-50">
-            {/* O Logótipo é o botão de regresso */}
             <h1 
                 onClick={() => setView('home')}
                 className="text-xl font-bold tracking-tight text-green-400 cursor-pointer hover:text-green-300 transition-colors"

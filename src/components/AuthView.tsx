@@ -6,7 +6,6 @@ interface AuthViewProps {
 }
 
 export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
-    // Gestão de estados do formulário e interface
     const [mode, setMode] = useState<'welcome' | 'login' | 'register'>('welcome');
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
@@ -14,7 +13,6 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    // Função de Autenticação (Login)
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -27,7 +25,6 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
 
             const data = await response.json();
             if (response.ok) {
-                // Passa o Token e a Role para o App.tsx
                 onLoginSuccess(data.token, data.role); 
             } else {
                 setError(data.error || 'Credenciais inválidas');
@@ -37,7 +34,6 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
         }
     };
 
-    // Função de Registo (Sign in)
     const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -50,7 +46,7 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
                 nome: name, 
                 email: email, 
                 password: password,
-                role: 'USER' // ← ADICIONA ESTA LINHA
+                role: 'USER'
             }),
         });
 
@@ -60,7 +56,6 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
             setSuccess('Conta criada com sucesso!');
             setTimeout(() => { setMode('login'); setSuccess(''); }, 2000);
         } else {
-            // Se falhar, vamos ver o que está dentro do Array de detalhes
             console.error("Detalhes do erro de validação:", data.detalhes);
             setError(data.error || 'Dados inválidos. Verifique a password (min. 6/8 chars).');
         }
@@ -73,13 +68,11 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
         <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
             <div className="w-full max-w-sm bg-white border-2 border-slate-200 rounded-[3rem] p-12 shadow-2xl flex flex-col items-center">
                 
-                {/* Header com Logo */}
                 <div className="flex flex-col items-center mb-10">
                     <img src={logoImg} alt="WeDo Logo" className="w-20 h-20 mb-3 object-contain" />
                     <h1 className="text-5xl font-light tracking-widest text-slate-700 italic">WeDo</h1>
                 </div>
 
-                {/* Ecrã de Boas-vindas (Welcome) */}
                 {mode === 'welcome' && (
                     <div className="flex flex-col gap-5 w-full">
                         <button 
@@ -97,7 +90,6 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
                     </div>
                 )}
 
-                {/* Formulário de Login */}
                 {mode === 'login' && (
                     <form onSubmit={handleLogin} className="w-full flex flex-col gap-4 text-left">
                         <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3 border-b-2 border-slate-200 focus:border-green-500 outline-none transition-colors" required />
@@ -108,7 +100,6 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
                     </form>
                 )}
 
-                {/* Formulário de Registo (Sign in) */}
                 {mode === 'register' && (
                     <form onSubmit={handleRegister} className="w-full flex flex-col gap-4 text-left">
                         <input type="text" placeholder="Nome completo" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 border-b-2 border-slate-200 focus:border-green-500 outline-none transition-colors" required />
@@ -121,17 +112,14 @@ export const AuthView = ({ onLoginSuccess }: AuthViewProps) => {
                     </form>
                 )}
 
-                {/* Secção de Contas de Teste (Mock Accounts) */}
                 <div className="mt-10 pt-6 border-t border-slate-100 w-full text-center">
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Contas de Teste</p>
                     <div className="flex flex-col gap-3">
-                        {/* Admin Account */}
                         <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
                             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Admin</p>
                             <p className="text-xs text-slate-600 font-mono">user: <span className="text-slate-900 font-bold">admin1@wedo.pt</span></p>
                             <p className="text-xs text-slate-600 font-mono">pass: <span className="text-slate-900 font-bold">admin123</span></p>
                         </div>
-                        {/* User Account */}
                         <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
                             <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">User</p>
                             <p className="text-xs text-slate-600 font-mono">user: <span className="text-slate-900 font-bold">user1@wedo.pt</span></p>

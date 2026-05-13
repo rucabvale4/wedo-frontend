@@ -29,7 +29,6 @@ function App() {
         setShowLogoutModal(false);
     };
 
-    // Se não houver token, mostra Login
     if (!token) {
         return <AuthView onLoginSuccess={handleLoginSuccess} />;
     }
@@ -37,14 +36,12 @@ function App() {
     return (
         <div className="min-h-screen bg-gray-50 relative text-slate-800 font-sans">
             
-            {/* DECISÃO DE PORTAL */}
             {role === 'ADMIN' ? (
                 <AdminPortal token={token} onLogout={() => setShowLogoutModal(true)} />
             ) : (
                 <UserPortal onLogout={() => setShowLogoutModal(true)} />
             )}
 
-            {/* MODAL DE LOGOUT (Comum a ambos) */}
             {showLogoutModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-3xl p-10 max-w-sm w-full shadow-2xl text-center">

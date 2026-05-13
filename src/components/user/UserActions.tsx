@@ -14,7 +14,6 @@ export const UserActions = ({ token }: UserActionsProps) => {
 
     const fetchMyActions = async () => {
         try {
-            // Vamos buscar os mesmos dados dos grupos, que já trazem as actions incluídas
             const res = await fetch('http://localhost:3000/api/squads/my-squads', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -29,14 +28,13 @@ export const UserActions = ({ token }: UserActionsProps) => {
         }
     };
 
-    // Mesma função de estado de tempo real
     const determineEstado = (action: any) => {
         if (action.estado === 'Cancelado') return 'Cancelado'; 
         if (!action.data_hora) return action.estado; 
 
         const now = new Date();
         const actionDate = new Date(action.data_hora);
-        const actionEnd = new Date(actionDate.getTime() + 2 * 60 * 60 * 1000); // Duração de 2 horas
+        const actionEnd = new Date(actionDate.getTime() + 2 * 60 * 60 * 1000);
 
         if (now < actionDate) return 'Planeamento';
         if (now >= actionDate && now <= actionEnd) return 'Em curso';

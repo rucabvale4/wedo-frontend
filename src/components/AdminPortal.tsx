@@ -14,7 +14,6 @@ export const AdminPortal = ({ token, onLogout }: { token: string; onLogout: () =
             <Navbar setView={(v) => setView(v as View)} currentView={view} onLogout={onLogout} />
             
             <main className="container mx-auto px-6 py-8">
-                {/* Botão de Voltar para navegação rápida entre secções */}
                 {view !== 'home' && (
                     <button 
                         onClick={() => setView('home')} 
@@ -24,7 +23,6 @@ export const AdminPortal = ({ token, onLogout }: { token: string; onLogout: () =
                     </button>
                 )}
 
-                {/* Switch de Vistas */}
                 {view === 'home' && <AdminDashboard setView={setView} />}
                 {view === 'users' && <UserManagement token={token} />}
                 {view === 'squads' && <SquadManagement token={token} />}
@@ -37,7 +35,6 @@ export const AdminPortal = ({ token, onLogout }: { token: string; onLogout: () =
 const AdminDashboard = ({ setView }: { setView: (v: View) => void }) => (
     <div className="flex flex-col items-center justify-center text-center py-20 gap-16">
         
-        {/* TÍTULO PROPORCIONAL: WeDo em Verde + Command Center */}
         <div className="flex flex-col items-center gap-0">
             <h1 className="text-8xl font-black text-green-500 italic tracking-tighter select-none drop-shadow-md">
                 WeDo

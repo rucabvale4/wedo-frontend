@@ -5,7 +5,6 @@ import { UserFeed } from './user/UserFeed';
 import { UserActions } from './user/UserActions';
 import { UserFriends } from './user/UserFriends';
 
-// 1. Resolve o erro "Cannot find name 'UserPortalProps'" (Imagem 1fe478)
 interface UserPortalProps {
     token?: string; 
     onLogout: () => void;
@@ -16,14 +15,12 @@ export const UserPortal = ({ token, onLogout }: UserPortalProps) => {
     const [userData, setUserData] = useState<any>(null);
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
     
-    // Cor do perfil com persistência
     const [perfilColor, setPerfilColor] = useState(() => {
         return localStorage.getItem('wedo_profile_color') || '2563eb';
     });
 
     const authToken = token || localStorage.getItem('wedo_token'); 
 
-    // 2. Carregamento de dados (Resolve o erro da Imagem 1fe470)
     useEffect(() => {
         const fetchMyProfile = async () => {
             if (!authToken) return;
@@ -51,7 +48,6 @@ export const UserPortal = ({ token, onLogout }: UserPortalProps) => {
     return (
         <div className="flex h-screen bg-gray-100 overflow-hidden text-slate-800 relative">
             
-            {/* SIDEBAR TÁTICA (HOVER) - MANTENDO AS CORES DO SLATE-900 */}
             <aside 
                 onMouseEnter={() => setIsSidebarHovered(true)}
                 onMouseLeave={() => setIsSidebarHovered(false)}
@@ -101,7 +97,6 @@ export const UserPortal = ({ token, onLogout }: UserPortalProps) => {
                         </span>
                     </button>
                     
-                    {/* 3. Resolve o erro "'onLogout' is never read" (Imagem 1fe478) */}
                     <button 
                         onClick={onLogout} 
                         className={`w-full flex items-center py-3 text-red-400 hover:bg-red-500/20 rounded-xl transition-all mt-4 ${isSidebarHovered ? 'px-4 gap-4' : 'justify-center'}`}
@@ -114,7 +109,6 @@ export const UserPortal = ({ token, onLogout }: UserPortalProps) => {
                 </div>
             </aside>
 
-            {/* PAINEL CENTRAL MODULAR */}
             <main className="flex-1 overflow-y-auto p-12 z-0 relative">
                 
                 {currentView === 'feed' && <UserFeed />}

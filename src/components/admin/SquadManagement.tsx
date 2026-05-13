@@ -29,10 +29,9 @@ export const SquadManagement = ({ token }: SquadManagementProps) => {
         setTimeout(() => setSuccessMessage(''), 1500);
     };
 
-    // --- FUNÇÃO DE EDITAR / CRIAR (FUNCIONAL) ---
     const handleSaveSquad = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("A enviar dados:", formData); // Ver no F12 se os dados estão corretos
+    console.log("A enviar dados:", formData);
 
     const url = selectedSquad 
         ? `http://localhost:3000/api/squads/${selectedSquad.id}` 
@@ -56,7 +55,6 @@ export const SquadManagement = ({ token }: SquadManagementProps) => {
             triggerToast(selectedSquad ? 'Squad atualizado!' : 'Squad criado!');
             setSelectedSquad(null);
         } else {
-            // ISTO VAI MOSTRAR PORQUE É QUE NÃO FUNCIONA
             const errorData = await res.json();
             console.error("Erro do servidor:", errorData);
             alert(`Erro: ${errorData.error || 'Falha na validação'}`);
@@ -65,7 +63,6 @@ export const SquadManagement = ({ token }: SquadManagementProps) => {
         alert("Erro de ligação ao servidor.");
     }
 };
-    // --- FUNÇÃO DE APAGAR (FUNCIONAL) ---
     const executeDelete = async () => {
     if (!squadToDelete) return;
     console.log("A apagar squad ID:", squadToDelete);
@@ -92,7 +89,6 @@ export const SquadManagement = ({ token }: SquadManagementProps) => {
     return (
         <section className="bg-white rounded-[2.5rem] shadow-sm border p-10 animate-in fade-in duration-500 relative">
             
-            {/* TOAST DISCRETO */}
             {successMessage && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="bg-emerald-500/80 backdrop-blur-sm text-white px-5 py-2 rounded-xl shadow-lg flex items-center gap-2 border border-emerald-400/50">
@@ -148,7 +144,6 @@ export const SquadManagement = ({ token }: SquadManagementProps) => {
                 </tbody>
             </table>
 
-            {/* MODAL EDITAR/CRIAR */}
             {showModal && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl">
@@ -177,7 +172,6 @@ export const SquadManagement = ({ token }: SquadManagementProps) => {
                 </div>
             )}
 
-            {/* MODAL APAGAR */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl text-center">

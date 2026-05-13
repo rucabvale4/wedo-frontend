@@ -72,7 +72,6 @@ export const UserProfile = ({ userData, token, perfilColor, setPerfilColor, onUp
             </header>
 
             <div className="space-y-8">
-                {/* 1. CARD PRINCIPAL (Nome, Email, Avatar) */}
                 <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center gap-10 relative">
                     {!isEditing && (
                         <button onClick={() => setIsEditing(true)} className="absolute top-8 right-8 text-slate-300 hover:text-blue-500 p-2 transition-all">
@@ -116,7 +115,6 @@ export const UserProfile = ({ userData, token, perfilColor, setPerfilColor, onUp
                     </div>
                 </div>
 
-                {/* 2. ESTATÍSTICAS (XP E STREAK) - O QUE ESTAVA EM FALTA NA TUA IMAGEM */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-white border border-slate-200 rounded-3xl p-8 relative overflow-hidden group">
                         <div className="absolute -right-6 -bottom-6 text-9xl opacity-5 group-hover:scale-110 transition-transform">⭐</div>
@@ -137,7 +135,6 @@ export const UserProfile = ({ userData, token, perfilColor, setPerfilColor, onUp
                 </div>
             </div>
 
-            {/* MODAL CORES (PREVIEW) */}
             {showColorModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl max-w-sm w-full relative">

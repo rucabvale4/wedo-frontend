@@ -5,9 +5,8 @@ interface ActionManagementProps {
 }
 
 export const ActionManagement = ({ token }: ActionManagementProps) => {
-    // --- ESTADOS ---
     const [actions, setActions] = useState<any[]>([]);
-    const [squads, setSquads] = useState<any[]>([]); // Precisamos disto para o dropdown!
+    const [squads, setSquads] = useState<any[]>([]);
     
     const [showModal, setShowModal] = useState(false);
     const [selectedAction, setSelectedAction] = useState<any>(null);
@@ -19,14 +18,12 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
     const [actionToDelete, setActionToDelete] = useState<number | null>(null);
     const [successMessage, setSuccessMessage] = useState('');
 
-    // --- CARREGAMENTO DE DADOS ---
     useEffect(() => {
         fetchData();
     }, []);
 
     const fetchData = async () => {
         try {
-            // Vamos buscar as Actions E os Squads ao mesmo tempo
             const [resActions, resSquads] = await Promise.all([
                 fetch('http://localhost:3000/api/actions', { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch('http://localhost:3000/api/squads', { headers: { 'Authorization': `Bearer ${token}` } })
@@ -40,13 +37,11 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
         }
     };
 
-    // --- FEEDBACK (TOAST) ---
     const triggerToast = (msg: string) => {
         setSuccessMessage(msg);
         setTimeout(() => setSuccessMessage(''), 1500);
     };
 
-    // --- LÓGICA DE GUARDAR (CRIAR / EDITAR) ---
     const handleSaveAction = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -55,7 +50,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
             : 'http://localhost:3000/api/actions';
         const method = selectedAction ? 'PATCH' : 'POST';
 
-        // Preparamos os dados (o squadId tem de ser número, e a data tem de ser ISO)
         const bodyData: any = { 
             ...formData,
             squadId: Number(formData.squadId)
@@ -91,7 +85,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
         }
     };
 
-    // --- LÓGICA DE ELIMINAÇÃO ---
     const executeDelete = async () => {
         if (!actionToDelete) return;
         try {
@@ -111,20 +104,17 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
         }
     };
 
-    // Função de ajuda para mostrar o nome do Squad na tabela
     const getSquadName = (squadId: number) => {
         const squad = squads.find(s => s.id === squadId);
         return squad ? squad.nomeSquad : 'Desconhecido';
     };
 
-    // Função de ajuda para formatar a data na tabela
     const formatDateTime = (dateString: string) => {
         if (!dateString) return 'Data não definida';
         const d = new Date(dateString);
         return `${d.toLocaleDateString('pt-PT')} às ${d.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'})}`;
     };
 
-    // Função para formatar a data para o input do form (YYYY-MM-DDTHH:mm)
     const formatForInput = (dateString: string) => {
         if (!dateString) return '';
         const d = new Date(dateString);
@@ -135,7 +125,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
     return (
         <section className="bg-white rounded-[2.5rem] shadow-sm border p-10 animate-in fade-in duration-500">
             
-            {/* TOAST DISCRETO */}
             {successMessage && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="bg-emerald-500/80 backdrop-blur-sm text-white px-5 py-2 rounded-xl shadow-lg flex items-center gap-2 border border-emerald-400/50">
@@ -145,7 +134,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                 </div>
             )}
 
-            {/* CABEÇALHO */}
             <div className="flex justify-between items-center mb-10">
                 <h2 className="text-3xl font-bold text-slate-800 italic">Gestão de Actions</h2>
                 <button 
@@ -160,7 +148,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                 </button>
             </div>
 
-            {/* TABELA DE ACTIONS */}
             <table className="w-full text-left">
                 <thead>
                     <tr className="text-slate-400 text-[10px] uppercase tracking-[0.2em] border-b border-slate-100">
@@ -185,7 +172,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                                 {formatDateTime(a.data_hora)}
                             </td>
                             <td className="py-5">
-                                {/* AS CORES ATUALIZADAS AQUI */}
                                 <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-wider ${
                                     a.estado === 'Planeamento' ? 'bg-amber-100 text-amber-700' :
                                     a.estado === 'Em Curso' ? 'bg-blue-100 text-blue-700' :
@@ -229,7 +215,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                 </tbody>
             </table>
 
-            {/* MODAL: CRIAR / EDITAR */}
             {showModal && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-2xl w-full shadow-2xl animate-in zoom-in duration-300">
@@ -287,7 +272,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                 </div>
             )}
 
-            {/* MODAL: CONFIRMAR ELIMINAÇÃO */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl text-center">

@@ -26,15 +26,13 @@ export const UserFriends = ({ token }: UserFriendsProps) => {
         }
     };
 
-    // Função do novo botão
     const handleProcurarAmigos = () => {
         setToastMessage("Já és amigo de toda a gente! 🌍");
-        setTimeout(() => setToastMessage(''), 3000); // Esconde a mensagem após 3 segundos
+        setTimeout(() => setToastMessage(''), 3000);
     };
 
     return (
         <section className="animate-in fade-in duration-500">
-            {/* Notificação Temporária */}
             {toastMessage && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[300] animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="bg-blue-500/90 backdrop-blur-sm text-white px-5 py-3 rounded-xl shadow-lg border border-blue-400/50 flex items-center gap-2">
@@ -47,7 +45,6 @@ export const UserFriends = ({ token }: UserFriendsProps) => {
             <header className="mb-12 flex justify-between items-end">
                 <h2 className="text-4xl font-light italic text-slate-700 border-b-2 border-slate-300 inline-block pb-2">Comunidade</h2>
                 
-                {/* Botão Novo */}
                 <button 
                     onClick={handleProcurarAmigos}
                     className="px-6 py-2 bg-slate-800 text-white rounded-full text-xs font-bold hover:bg-slate-900 transition-all shadow-md"

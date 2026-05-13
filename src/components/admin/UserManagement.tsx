@@ -5,7 +5,6 @@ interface UserManagementProps {
 }
 
 export const UserManagement = ({ token }: UserManagementProps) => {
-    // ESTADOS
     const [users, setUsers] = useState<any[]>([]);
     const [showUserModal, setShowUserModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -14,7 +13,6 @@ export const UserManagement = ({ token }: UserManagementProps) => {
     const [userToDelete, setUserToDelete] = useState<number | null>(null);
     const [successMessage, setSuccessMessage] = useState('');
 
-    // CARREGAR DADOS
     useEffect(() => {
         fetchData();
     }, []);
@@ -30,7 +28,6 @@ export const UserManagement = ({ token }: UserManagementProps) => {
         }
     };
 
-    // FUNÇÕES DE AÇÃO
     const handleSaveUser = async (e: React.FormEvent) => {
         e.preventDefault();
         const url = selectedUser ? `http://localhost:3000/api/users/${selectedUser.id}` : 'http://localhost:3000/api/users';
@@ -55,7 +52,6 @@ export const UserManagement = ({ token }: UserManagementProps) => {
                 setSuccessMessage(selectedUser ? 'Utilizador atualizado!' : 'Utilizador registado!');
                 setTimeout(() => setSuccessMessage(''), 1500);
             } else {
-                // DAR VOZ AO ERRO
                 const errorData = await res.json();
                 alert(`Falha: ${errorData.error || 'Verifique os dados'}`);
             }
@@ -76,10 +72,8 @@ export const UserManagement = ({ token }: UserManagementProps) => {
                 fetchData();
                 setShowDeleteModal(false);
 
-                // --- NOTIFICAÇÃO DISCRETA ---
                 setSuccessMessage('Utilizador removido!');
                 
-                // O mesmo tempo curto (1.5s) que definimos para os outros
                 setTimeout(() => setSuccessMessage(''), 1500);
             }
         } catch (err) {
@@ -118,7 +112,6 @@ export const UserManagement = ({ token }: UserManagementProps) => {
                             <td className="py-5 font-bold text-slate-700">{u.nome}</td>
                             <td className="py-5 text-slate-500 text-sm">{u.email}</td>
                             <td className="py-5">
-                                {/* CORES ATUALIZADAS: ADMIN a Roxo e USER a Cinzento */}
                                 <span className={`text-[10px] font-black px-3 py-1 rounded-md uppercase tracking-widest ${
                                     u.role === 'ADMIN' 
                                         ? 'bg-purple-100 text-purple-700 border border-purple-200' 
@@ -150,7 +143,6 @@ export const UserManagement = ({ token }: UserManagementProps) => {
                 </tbody>
             </table>
 
-            {/* MODAL EDITAR / CRIAR */}
             {showUserModal && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl">
@@ -172,7 +164,6 @@ export const UserManagement = ({ token }: UserManagementProps) => {
                 </div>
             )}
 
-            {/* MODAL ELIMINAR */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl text-center">
@@ -187,7 +178,6 @@ export const UserManagement = ({ token }: UserManagementProps) => {
                 </div>
             )}
 
-            {/* TOAST MAIS DISCRETO */}
             {successMessage && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="bg-emerald-500/80 backdrop-blur-sm text-white px-5 py-2 rounded-xl shadow-lg flex items-center gap-2 border border-emerald-400/30">
