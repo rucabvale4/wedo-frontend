@@ -10,8 +10,11 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
     
     const [showModal, setShowModal] = useState(false);
     const [selectedAction, setSelectedAction] = useState<any>(null);
+    
+    // Atualizado com os campos de localização
     const [formData, setFormData] = useState({ 
-        titulo: '', categoria: '', descricao: '', squadId: '', estado: 'Planeamento', data_hora: '' 
+        titulo: '', categoria: '', descricao: '', squadId: '', estado: 'Planeamento', data_hora: '',
+        morada: '', latitude: undefined as number | undefined, longitude: undefined as number | undefined 
     }); 
     
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -42,6 +45,25 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
         setTimeout(() => setSuccessMessage(''), 1500);
     };
 
+    // Função para obter coordenadas via API
+    const handleGetCoordinates = async () => {
+        if (!formData.morada) return alert("Escreve uma morada primeiro.");
+        try {
+            const res = await fetch(`http://localhost:3000/api/actions/coordinates?address=${encodeURIComponent(formData.morada)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setFormData({ ...formData, latitude: data.latitude, longitude: data.longitude });
+                triggerToast("📍 Localização encontrada!");
+            } else {
+                alert("Não foi possível encontrar essa localização.");
+            }
+        } catch (err) {
+            alert("Erro ao comunicar com o servidor.");
+        }
+    };
+
     const handleSaveAction = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -50,9 +72,12 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
             : 'http://localhost:3000/api/actions';
         const method = selectedAction ? 'PATCH' : 'POST';
 
+        // Incluir latitude e longitude no envio
         const bodyData: any = { 
             ...formData,
-            squadId: Number(formData.squadId)
+            squadId: Number(formData.squadId),
+            latitude: formData.latitude,
+            longitude: formData.longitude
         };
         
         if (bodyData.data_hora) {
@@ -139,7 +164,7 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                 <button 
                     onClick={() => { 
                         setSelectedAction(null); 
-                        setFormData({ titulo: '', categoria: '', descricao: '', squadId: '', estado: 'Planeamento', data_hora: '' }); 
+                        setFormData({ titulo: '', categoria: '', descricao: '', squadId: '', estado: 'Planeamento', data_hora: '', morada: '', latitude: undefined, longitude: undefined }); 
                         setShowModal(true); 
                     }}
                     className="bg-blue-600 text-white px-8 py-3 rounded-full font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all"
@@ -164,6 +189,9 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                             <td className="py-5 font-bold text-slate-700">
                                 🎯 {a.titulo}
                                 <span className="block text-xs font-normal text-slate-400 mt-1">{a.categoria}</span>
+                                {a.latitude && a.longitude && (
+                                    <span className="block text-[10px] font-bold text-emerald-600 mt-1">📍 Localização definida</span>
+                                )}
                             </td>
                             <td className="py-5 text-slate-600 font-bold text-sm">
                                 🛡️ {getSquadName(a.squadId)}
@@ -192,7 +220,10 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                                             descricao: a.descricao || '', 
                                             squadId: a.squadId.toString(), 
                                             estado: a.estado || 'Planeamento',
-                                            data_hora: formatForInput(a.data_hora)
+                                            data_hora: formatForInput(a.data_hora),
+                                            morada: '',
+                                            latitude: a.latitude,
+                                            longitude: a.longitude
                                         }); 
                                         setShowModal(true); 
                                     }} 
@@ -217,7 +248,7 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
 
             {showModal && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-[2.5rem] p-10 max-w-2xl w-full shadow-2xl animate-in zoom-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] p-10 max-w-2xl w-full shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
                         <h3 className="text-2xl font-bold mb-6 text-slate-800">
                             {selectedAction ? '📝 Editar Action' : '🎯 Nova Action'}
                         </h3>
@@ -256,6 +287,32 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                             <div>
                                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-2 mb-1 block">Data e Hora (Opcional)</label>
                                 <input type="datetime-local" value={formData.data_hora} onChange={e => setFormData({ ...formData, data_hora: e.target.value })} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-blue-500" />
+                            </div>
+
+                            {/* NOVA SECÇÃO: LOCALIZAÇÃO */}
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase ml-2 block">Localização (Opcional)</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Morada (ex: Padrão dos Descobrimentos)" 
+                                        value={formData.morada} 
+                                        onChange={e => setFormData({ ...formData, morada: e.target.value, latitude: undefined, longitude: undefined })} 
+                                        className="w-full p-3 bg-white rounded-xl border border-slate-200 outline-none focus:border-blue-500 text-sm" 
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={handleGetCoordinates} 
+                                        className="px-5 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition-all text-sm shrink-0"
+                                    >
+                                        📍 Procurar
+                                    </button>
+                                </div>
+                                {formData.latitude && formData.longitude && (
+                                    <div className="text-xs text-emerald-600 font-bold px-2 flex items-center gap-1">
+                                        <span>✓</span> Localização atualizada (Lat: {formData.latitude.toFixed(4)}, Lng: {formData.longitude.toFixed(4)})
+                                    </div>
+                                )}
                             </div>
 
                             <div>
