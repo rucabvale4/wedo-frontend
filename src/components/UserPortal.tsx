@@ -111,11 +111,9 @@ export const UserPortal = ({ token, onLogout }: UserPortalProps) => {
 
             <main className="flex-1 overflow-y-auto p-12 z-0 relative">
                 
-                {currentView === 'feed' && <UserFeed />}
+                {currentView === 'feed' && authToken && <UserFeed token={authToken} userData={userData} />}
                 
-                {currentView === 'squads' && authToken && (
-                    <UserSquads token={authToken} />
-                )}
+                {currentView === 'squads' && authToken && (<UserSquads token={authToken} />)}
                 
                 {currentView === 'actions' && authToken && <UserActions token={authToken} />}
                 
