@@ -2,17 +2,43 @@ import { useState, useEffect } from 'react';
 
 interface UserActionsProps {
     token: string;
+    userData?: any;
 }
 
-export const UserActions = ({ token }: UserActionsProps) => {
+const EvidenceUploadActions = ({ evidenceFile, setEvidenceFile, onSubmit }: { evidenceFile: File | null; setEvidenceFile: (f: File | null) => void; onSubmit: () => void }) => (
+    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+        {evidenceFile ? (
+            <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 p-2">
+                <img src={URL.createObjectURL(evidenceFile)} alt="preview" className="w-14 h-14 rounded-lg object-cover border border-slate-100 shrink-0" />
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-700 truncate">{evidenceFile.name}</p>
+                    <p className="text-[10px] text-slate-400">{(evidenceFile.size / 1024).toFixed(0)} KB</p>
+                </div>
+                <button onClick={() => setEvidenceFile(null)} className="text-slate-400 hover:text-red-500 font-bold text-lg leading-none shrink-0">✕</button>
+            </div>
+        ) : (
+            <label className="flex flex-col items-center justify-center cursor-pointer py-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 transition-colors">
+                <span className="text-2xl mb-1">📸</span>
+                <span className="text-xs font-bold text-slate-500">Clica para adicionar uma foto</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, GIF, WEBP — máx. 5 MB</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)} />
+            </label>
+        )}
+        {evidenceFile && (
+            <button onClick={onSubmit} className="w-full py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm">
+                Enviar Prova
+            </button>
+        )}
+    </div>
+);
+
+export const UserActions = ({ token, userData }: UserActionsProps) => {
     const [mySquads, setMySquads] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     
-    // Action Selecionada para os Detalhes (Mapa e Participação)
     const [selectedAction, setSelectedAction] = useState<any>(null);
-    const [evidenceUrl, setEvidenceUrl] = useState(''); // NOVO: Estado para a Prova
+    const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
 
-    // Funcionalidade: Editar Action
     const [showEditActionModal, setShowEditActionModal] = useState(false);
     const [actionToEdit, setActionToEdit] = useState<number | null>(null);
     const [editActionForm, setEditActionForm] = useState({ 
@@ -40,7 +66,6 @@ export const UserActions = ({ token }: UserActionsProps) => {
                 const data = await res.json();
                 setMySquads(data);
                 
-                // Se um modal de detalhes estiver aberto, atualiza a informação lá dentro também
                 setSelectedAction((current: any) => {
                     if (!current) return null;
                     for (const squad of data) {
@@ -77,41 +102,43 @@ export const UserActions = ({ token }: UserActionsProps) => {
         return 'Concluída';
     };
 
-    // --- NOVO: FUNÇÕES DA FRENTE 1 (ACEITAR E PROVAR) ---
     const handleParticipate = async (actionId: number) => {
+        const isParticipating = userData && selectedAction?.participations?.some((p: any) => p.userId === userData.id);
+        const method = isParticipating ? 'DELETE' : 'POST';
         try {
             const res = await fetch(`http://localhost:3000/api/actions/${actionId}/participate`, {
-                method: 'POST',
+                method,
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                triggerToast("✋ Missão aceite! Vemo-nos no terreno!");
-                fetchMyActions(); 
+                triggerToast(isParticipating ? "Participação cancelada." : "✋ Action aceite! Vemo-nos lá!");
+                fetchMyActions();
             } else {
-                alert("Atenção Backend: Rota POST /api/actions/:id/participate em falta!");
+                triggerToast("Erro ao atualizar participação.");
             }
-        } catch (err) { alert("Erro de ligação."); }
+        } catch (err) { triggerToast("Erro de ligação."); }
     };
 
     const handleSubmitEvidence = async (actionId: number) => {
-        if (!evidenceUrl) return alert("Cola o link da imagem da prova primeiro!");
+        if (!evidenceFile) return triggerToast("Seleciona uma imagem primeiro.");
+        const formData = new FormData();
+        formData.append('imagem', evidenceFile);
         try {
             const res = await fetch(`http://localhost:3000/api/actions/${actionId}/evidence`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ imagem_url: evidenceUrl })
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
             });
             if (res.ok) {
-                triggerToast("📸 Prova submetida e a aguardar validação!");
-                setEvidenceUrl('');
+                const data = await res.json();
+                triggerToast(`📸 Prova submetida! +${data.xpGanho} XP`);
+                setEvidenceFile(null);
                 fetchMyActions();
             } else {
-                alert("Atenção Backend: Rota POST /api/actions/:id/evidence em falta!");
+                triggerToast("Erro ao submeter prova.");
             }
-        } catch (err) { alert("Erro de ligação."); }
+        } catch (err) { triggerToast("Erro de ligação."); }
     };
-
-    // --- FIM FRENTE 1 ---
 
     const handleEditActionGetCoordinates = async () => {
         if (!editActionForm.morada) return alert("Escreve uma morada primeiro.");
@@ -181,7 +208,7 @@ export const UserActions = ({ token }: UserActionsProps) => {
 
             <header className="mb-12">
                 <h2 className="text-4xl font-light italic text-slate-700 border-b-2 border-slate-300 inline-block pb-2">
-                    Minhas Actions
+                    Actions
                 </h2>
             </header>
 
@@ -276,7 +303,7 @@ export const UserActions = ({ token }: UserActionsProps) => {
                                     })
                                 ) : (
                                     <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                        <p className="text-slate-500">Este Squad ainda não tem missões agendadas.</p>
+                                        <p className="text-slate-500">Este Squad ainda não tem actions agendadas.</p>
                                     </div>
                                 )}
                             </div>
@@ -285,7 +312,6 @@ export const UserActions = ({ token }: UserActionsProps) => {
                 </div>
             )}
 
-            {/* MODAL: VER DETALHES DA ACTION & MAPA */}
             {selectedAction && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh] custom-scrollbar">
@@ -303,44 +329,93 @@ export const UserActions = ({ token }: UserActionsProps) => {
 
                         <div className="space-y-6">
                             
-                            {/* --- NOVO: BLOCO DE ACEITAÇÃO DA FRENTE 1 --- */}
-                            <div className="p-5 border-2 border-slate-100 rounded-2xl bg-white shadow-sm">
-                                <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">🎯 Estado da Missão</h4>
-                                
-                                <div className="mb-6">
-                                    <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
-                                        <span>Progresso de Mobilização</span>
-                                        <span>{selectedAction.participations?.length || 0} Aceitaram</span>
-                                    </div>
-                                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                                        {/* A percentagem assume um target de 10 apenas para a demo visual, podes mudar a lógica */}
-                                        <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(((selectedAction.participations?.length || 0) / 10) * 100, 100)}%` }}></div>
-                                    </div>
-                                </div>
+                            {(() => {
+                                const estado = determineEstado(selectedAction);
+                                const isParticipating = userData && selectedAction?.participations?.some((p: any) => p.userId === userData.id);
 
-                                <div className="space-y-3">
-                                    <button onClick={() => handleParticipate(selectedAction.id)} className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex justify-center items-center gap-2">
-                                        ✋ Aceitar Missão
-                                    </button>
+                                return (
+                                    <div className="p-5 border-2 border-slate-100 rounded-2xl bg-white shadow-sm space-y-4">
+                                        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">🎯 Estado da Action
+                                            <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                estado === 'Planeamento' ? 'bg-blue-100 text-blue-700' :
+                                                estado === 'Em curso' ? 'bg-amber-100 text-amber-700' :
+                                                estado === 'Concluída' ? 'bg-emerald-100 text-emerald-700' :
+                                                'bg-red-100 text-red-700'
+                                            }`}>{estado}</span>
+                                        </h4>
 
-                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-2">
-                                        <input 
-                                            type="url" 
-                                            placeholder="Cola aqui o link da prova fotográfica..." 
-                                            value={evidenceUrl}
-                                            onChange={(e) => setEvidenceUrl(e.target.value)}
-                                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-emerald-500"
-                                        />
-                                        <button onClick={() => handleSubmitEvidence(selectedAction.id)} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm shrink-0">
-                                            📸 Enviar Prova
-                                        </button>
+                                        <div>
+                                            <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                                                <span>Confirmações</span>
+                                                <span>{selectedAction.participations?.length || 0} confirmados</span>
+                                            </div>
+                                            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                                                <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(((selectedAction.participations?.length || 0) / 10) * 100, 100)}%` }}></div>
+                                            </div>
+                                        </div>
+
+                                        {selectedAction.participations?.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Quem vai</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {selectedAction.participations.map((p: any) => (
+                                                        <div key={p.id} className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1">
+                                                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(p.user?.nome || '?')}&background=d1fae5&color=065f46&size=64&bold=true`} alt={p.user?.nome} className="w-5 h-5 rounded-full" />
+                                                            <span className="text-xs font-bold text-emerald-800">{p.user?.nome || 'Utilizador'}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {estado === 'Cancelado' && (
+                                            <p className="text-center py-3 text-sm font-bold text-red-500 bg-red-50 rounded-xl border border-red-100">Esta action foi cancelada.</p>
+                                        )}
+
+                                        {estado === 'Planeamento' && (
+                                            <>
+                                                <button onClick={() => handleParticipate(selectedAction.id)} className={`w-full py-3 rounded-xl text-sm font-bold shadow-md transition-all flex justify-center items-center gap-2 ${isParticipating ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                                                    {isParticipating ? '❌ Cancelar Participação' : '✋ Aceitar Action'}
+                                                </button>
+                                                <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">Provas disponíveis quando a action começar</p>
+                                            </>
+                                        )}
+
+                                        {estado === 'Em curso' && (
+                                            <>
+                                                <button onClick={() => handleParticipate(selectedAction.id)} className={`w-full py-3 rounded-xl text-sm font-bold shadow-md transition-all flex justify-center items-center gap-2 ${isParticipating ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                                                    {isParticipating ? '❌ Cancelar Participação' : '✋ Aceitar Action'}
+                                                </button>
+                                                <EvidenceUploadActions evidenceFile={evidenceFile} setEvidenceFile={setEvidenceFile} onSubmit={() => handleSubmitEvidence(selectedAction.id)} />
+                                            </>
+                                        )}
+
+                                        {estado === 'Concluída' && (
+                                            <EvidenceUploadActions evidenceFile={evidenceFile} setEvidenceFile={setEvidenceFile} onSubmit={() => handleSubmitEvidence(selectedAction.id)} />
+                                        )}
+
+                                        {selectedAction.evidences?.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Provas Submetidas ({selectedAction.evidences.length})</p>
+                                                <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto">
+                                                    {selectedAction.evidences.map((ev: any) => (
+                                                        <a key={ev.id} href={ev.imagem_url} target="_blank" rel="noreferrer" className="group block rounded-xl overflow-hidden border border-slate-200 hover:border-emerald-400 transition-colors">
+                                                            <img src={ev.imagem_url} alt="Prova" className="w-full h-24 object-cover group-hover:opacity-90 transition-opacity" />
+                                                            <div className="flex items-center gap-1.5 px-2 py-1.5 bg-white">
+                                                                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(ev.user?.nome || '?')}&background=f1f5f9&color=475569&size=32&bold=true`} className="w-4 h-4 rounded-full shrink-0" alt={ev.user?.nome} />
+                                                                <span className="text-[10px] font-bold text-slate-600 truncate">{ev.user?.nome || 'Utilizador'}</span>
+                                                            </div>
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            </div>
-                            {/* --- FIM BLOCO FRENTE 1 --- */}
+                                );
+                            })()}
 
                             <div>
-                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-2">Descrição da Missão</h4>
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-2">Descrição da Action</h4>
                                 <p className="text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">{selectedAction.descricao || "Nenhuma descrição fornecida."}</p>
                             </div>
 
@@ -359,7 +434,6 @@ export const UserActions = ({ token }: UserActionsProps) => {
                                 </div>
                             </div>
 
-                            {/* MAPA OPENSTREETMAP */}
                             {selectedAction.latitude && selectedAction.longitude ? (
                                 <div>
                                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2 flex items-center gap-2">
@@ -400,7 +474,6 @@ export const UserActions = ({ token }: UserActionsProps) => {
                 </div>
             )}
 
-            {/* MODAL: EDITAR ACTION */}
             {showEditActionModal && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">

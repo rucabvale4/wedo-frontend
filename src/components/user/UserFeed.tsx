@@ -133,7 +133,7 @@ export const UserFeed = ({ token, userData }: UserFeedProps) => {
 
             <header className="mb-10">
                 <h2 className="text-4xl font-light italic text-slate-700 border-b-2 border-slate-300 inline-block pb-2">
-                    O Teu Feed
+                    Feed Principal
                 </h2>
             </header>
 

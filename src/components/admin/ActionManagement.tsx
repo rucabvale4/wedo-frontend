@@ -11,7 +11,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
     const [showModal, setShowModal] = useState(false);
     const [selectedAction, setSelectedAction] = useState<any>(null);
     
-    // Atualizado com os campos de localização
     const [formData, setFormData] = useState({ 
         titulo: '', categoria: '', descricao: '', squadId: '', estado: 'Planeamento', data_hora: '',
         morada: '', latitude: undefined as number | undefined, longitude: undefined as number | undefined 
@@ -45,7 +44,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
         setTimeout(() => setSuccessMessage(''), 1500);
     };
 
-    // Função para obter coordenadas via API
     const handleGetCoordinates = async () => {
         if (!formData.morada) return alert("Escreve uma morada primeiro.");
         try {
@@ -72,7 +70,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
             : 'http://localhost:3000/api/actions';
         const method = selectedAction ? 'PATCH' : 'POST';
 
-        // Incluir latitude e longitude no envio
         const bodyData: any = { 
             ...formData,
             squadId: Number(formData.squadId),
@@ -289,7 +286,6 @@ export const ActionManagement = ({ token }: ActionManagementProps) => {
                                 <input type="datetime-local" value={formData.data_hora} onChange={e => setFormData({ ...formData, data_hora: e.target.value })} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-blue-500" />
                             </div>
 
-                            {/* NOVA SECÇÃO: LOCALIZAÇÃO */}
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-2 block">Localização (Opcional)</label>
                                 <div className="flex gap-2">

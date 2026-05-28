@@ -2,8 +2,35 @@ import { useState, useEffect } from 'react';
 
 interface UserSquadsProps {
     token: string;
-    userData?: any; // FIX: necessário para saber se o utilizador já votou
+    userData?: any;
 }
+
+const EvidenceUpload = ({ evidenceFile, setEvidenceFile, onSubmit }: { evidenceFile: File | null; setEvidenceFile: (f: File | null) => void; onSubmit: () => void }) => (
+    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+        {evidenceFile ? (
+            <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 p-2">
+                <img src={URL.createObjectURL(evidenceFile)} alt="preview" className="w-14 h-14 rounded-lg object-cover border border-slate-100 shrink-0" />
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-700 truncate">{evidenceFile.name}</p>
+                    <p className="text-[10px] text-slate-400">{(evidenceFile.size / 1024).toFixed(0)} KB</p>
+                </div>
+                <button onClick={() => setEvidenceFile(null)} className="text-slate-400 hover:text-red-500 font-bold text-lg leading-none shrink-0">✕</button>
+            </div>
+        ) : (
+            <label className="flex flex-col items-center justify-center cursor-pointer py-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 transition-colors">
+                <span className="text-2xl mb-1">📸</span>
+                <span className="text-xs font-bold text-slate-500">Clica para adicionar uma foto</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, GIF, WEBP — máx. 5 MB</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)} />
+            </label>
+        )}
+        {evidenceFile && (
+            <button onClick={onSubmit} className="w-full py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm">
+                Enviar Prova
+            </button>
+        )}
+    </div>
+);
 
 export const UserSquads = ({ token, userData }: UserSquadsProps) => {
     const [mySquads, setMySquads] = useState<any[]>([]);
@@ -14,17 +41,12 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     
-    // NOVO: Separadores do Squad
-    const [squadTab, setSquadTab] = useState<'actions' | 'polls'>('actions'); 
-
-    // Nova Action
     const [showCreateActionModal, setShowCreateActionModal] = useState(false);
     const [actionForm, setActionForm] = useState({ 
         titulo: '', categoria: '', descricao: '', dataHora: '', 
         morada: '', latitude: undefined as number | undefined, longitude: undefined as number | undefined 
     });
 
-    // Editar Action
     const [showEditActionModal, setShowEditActionModal] = useState(false);
     const [actionToEdit, setActionToEdit] = useState<number | null>(null);
     const [editActionForm, setEditActionForm] = useState({ 
@@ -32,19 +54,14 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
         morada: '', latitude: undefined as number | undefined, longitude: undefined as number | undefined 
     });
     
-    // Cancelar Action
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [actionToCancel, setActionToCancel] = useState<number | null>(null);
     
-    // NOVO: Detalhes da Action, Aceitação e Provas (Frente 1)
     const [selectedAction, setSelectedAction] = useState<any>(null);
-    const [evidenceUrl, setEvidenceUrl] = useState('');
+    const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
 
-    // NOVO: Votações (Frente 2)
-    const [showCreatePollModal, setShowCreatePollModal] = useState(false);
-    const [pollForm, setPollForm] = useState({ pergunta: '', data_limite: '', opcoes: [''] });
+    const [isAiLoading, setIsAiLoading] = useState(false);
 
-    // Squads
     const [createForm, setCreateForm] = useState({ nomeSquad: '', descricao: '' });
     const [editForm, setEditForm] = useState({ nomeSquad: '', descricao: '' });
     const [isEditing, setIsEditing] = useState(false);
@@ -100,7 +117,6 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                     return null;
                 });
 
-                // Atualiza a Action selecionada no modal se estiver aberto
                 setSelectedAction((currentAction: any) => {
                     if (!currentAction) return null;
                     for (const squad of data) {
@@ -131,128 +147,81 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
         setShowSearchModal(true);
     };
 
-    // --- FUNÇÕES DA FRENTE 1 (ACEITAR E PROVAR) ---
     const handleParticipate = async (actionId: number) => {
+        const isParticipating = userData && selectedAction?.participations?.some((p: any) => p.userId === userData.id);
+        const method = isParticipating ? 'DELETE' : 'POST';
         try {
             const res = await fetch(`http://localhost:3000/api/actions/${actionId}/participate`, {
-                method: 'POST',
+                method,
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                triggerToast("✋ Missão aceite! Vemo-nos no terreno!");
-                fetchMySquads(); 
+                triggerToast(isParticipating ? "Participação cancelada." : "✋ Missão aceite! Vemo-nos no terreno!");
+                fetchMySquads();
             } else {
-                alert("Atenção Backend: Rota POST /api/actions/:id/participate em falta!");
+                triggerToast("Erro ao atualizar participação.");
             }
-        } catch (err) { alert("Erro de ligação."); }
+        } catch (err) { triggerToast("Erro de ligação."); }
     };
 
     const handleSubmitEvidence = async (actionId: number) => {
-        if (!evidenceUrl) return alert("Cola o link da imagem da prova primeiro!");
+        if (!evidenceFile) return triggerToast("Seleciona uma imagem primeiro.");
+        const formData = new FormData();
+        formData.append('imagem', evidenceFile);
         try {
             const res = await fetch(`http://localhost:3000/api/actions/${actionId}/evidence`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ imagem_url: evidenceUrl })
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
             });
             if (res.ok) {
-                triggerToast("📸 Prova submetida e a aguardar validação!");
-                setEvidenceUrl('');
+                const data = await res.json();
+                triggerToast(`📸 Prova submetida! +${data.xpGanho} XP`);
+                setEvidenceFile(null);
                 fetchMySquads();
             } else {
-                alert("Atenção Backend: Rota POST /api/actions/:id/evidence em falta!");
+                triggerToast("Erro ao submeter prova.");
             }
-        } catch (err) { alert("Erro de ligação."); }
+        } catch (err) { triggerToast("Erro de ligação."); }
     };
 
-    // --- FUNÇÕES DA FRENTE 2 (VOTAÇÕES) ---
-    const handleAddPollOption = () => setPollForm({ ...pollForm, opcoes: [...pollForm.opcoes, ''] });
-    
-    const handlePollOptionChange = (index: number, value: string) => {
-        const newOpcoes = [...pollForm.opcoes];
-        newOpcoes[index] = value;
-        setPollForm({ ...pollForm, opcoes: newOpcoes });
-    };
-
-    const handleCreatePoll = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSuggestMission = async () => {
+        if (!actionForm.titulo || actionForm.titulo.trim().length < 2) {
+            return triggerToast("Escreve um título antes de pedir à IA.");
+        }
+        if (!actionForm.categoria || actionForm.categoria.trim().length < 2) {
+            return triggerToast("Escreve uma categoria antes de pedir à IA.");
+        }
+        setIsAiLoading(true);
         try {
-            const res = await fetch(`http://localhost:3000/api/squads/${selectedSquad.id}/polls`, {
+            const res = await fetch('http://localhost:3000/api/actions/suggest-mission', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(pollForm)
+                body: JSON.stringify({ titulo: actionForm.titulo, categoria: actionForm.categoria })
             });
             if (res.ok) {
-                setShowCreatePollModal(false);
-                triggerToast("📊 Votação criada com sucesso!");
-                fetchMySquads();
-                setPollForm({ pergunta: '', data_limite: '', opcoes: [''] });
+                const data = await res.json();
+                const lines = (data.suggestion as string).split('\n').map((l: string) => l.trim()).filter(Boolean);
+                const tituloLine = lines.find((l: string) => l.toLowerCase().startsWith('título:'));
+                const descLine = lines.find((l: string) => l.toLowerCase().startsWith('descrição:'));
+                const titulo = tituloLine ? tituloLine.replace(/^título:\s*/i, '') : '';
+                const descricao = descLine ? descLine.replace(/^descrição:\s*/i, '') : data.suggestion;
+                setActionForm(f => ({
+                    ...f,
+                    titulo: titulo || f.titulo,
+                    descricao
+                }));
+                triggerToast("✨ Sugestão gerada! Edita à vontade.");
             } else {
-                alert("Atenção Backend: Rota POST /api/squads/:id/polls em falta!");
+                triggerToast("Erro ao comunicar com a IA.");
             }
-        } catch (err) { alert("Erro de ligação."); }
-    };
-
-    const handleVote = async (pollId: number, option: string) => {
-        try {
-            // FIX: a rota correta é /api/squads/polls/:id/vote (não /api/polls/:id/vote)
-            const res = await fetch(`http://localhost:3000/api/squads/polls/${pollId}/vote`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ poll_option: option })
-            });
-            if (res.ok) {
-                triggerToast("✅ Voto registado!");
-                fetchMySquads();
-            } else if (res.status === 409) {
-                // O backend vai retornar 409 quando o @@unique([pollId, userId]) for violado
-                triggerToast("⚠️ Já votaste nesta votação.");
-            } else {
-                const errData = await res.json();
-                triggerToast(`Erro: ${errData.error || "Não foi possível registar o voto."}`);
-            }
-        } catch (err) { alert("Erro de ligação."); }
-    };
-
-    const handleConvertPollToAction = async (poll: any) => {
-        if (!poll.votes || poll.votes.length === 0) return alert("Ainda não há votos suficientes para tomar uma decisão!");
-        
-        // Descobre qual foi a opção mais votada
-        const counts = poll.opcoes.map((opcao: string) => {
-            return {
-                opcao,
-                votos: poll.votes.filter((v: any) => v.poll_option === opcao).length
-            };
-        });
-        
-        const winner = counts.reduce((max: any, current: any) => current.votos > max.votos ? current : max, counts[0]);
-
-        try {
-            const res = await fetch('http://localhost:3000/api/actions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    titulo: `Missão: ${winner.opcao}`,
-                    categoria: 'Votação Comunitária',
-                    descricao: `Esta missão nasceu da votação: "${poll.pergunta}". A opção vencedora pelo grupo foi "${winner.opcao}" com ${winner.votos} voto(s).`,
-                    squadId: selectedSquad.id,
-                    estado: 'Planeamento',
-                })
-            });
-
-            if (res.ok) {
-                triggerToast(`🎉 Missão "${winner.opcao}" criada no Quartel!`);
-                fetchMySquads();
-                setSquadTab('actions'); // Muda logo para a tab de Actions para verem o resultado
-            } else {
-                alert("Erro ao converter votação em Action. Verifica as rotas do Backend.");
-            }
-        } catch (err) {
-            alert("Erro de ligação ao servidor.");
+        } catch {
+            triggerToast("Erro de ligação.");
+        } finally {
+            setIsAiLoading(false);
         }
     };
 
-    // --- FUNÇÕES ORIGINAIS DO SQUAD/ACTIONS ---
     const handleCreateSquad = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -418,7 +387,6 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
         setSelectedSquad(squad);
         setEditForm({ nomeSquad: squad.nomeSquad, descricao: squad.descricao || '' });
         setActiveView('detail');
-        setSquadTab('actions'); // Garante que abre no separador de Missões
     };
 
     return (
@@ -436,7 +404,7 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                 <>
                     <header className="mb-12 flex justify-between items-end">
                         <h2 className="text-4xl font-light italic text-slate-700 border-b-2 border-slate-300 inline-block pb-2">
-                            {mySquads.length > 0 ? "Os Meus Squads" : "Squads"}
+                            {mySquads.length > 0 ? "Squads" : "Squads"}
                         </h2>
                         {mySquads.length > 0 && (
                             <div className="flex gap-3">
@@ -463,7 +431,7 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                                     <h3 className="text-xl font-bold mb-1 text-slate-800">{squad.nomeSquad}</h3>
                                     <p className="text-sm text-slate-500 mb-4 line-clamp-2">{squad.descricao || "Sem descrição."}</p>
                                     <div className="flex justify-between items-center pt-4 border-t border-slate-50">
-                                        <span className="text-xs font-bold text-blue-600 group-hover:underline">Entrar no Quartel ↗</span>
+                                        <span className="text-xs font-bold text-blue-600 group-hover:underline">Ver Squad ↗</span>
                                     </div>
                                 </div>
                             ))}
@@ -478,10 +446,6 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                         <button onClick={() => { setActiveView('list'); setIsEditing(false); }} className="text-slate-500 hover:text-slate-800 font-bold flex items-center gap-2 transition-colors">
                             <span className="text-xl">←</span> Voltar aos Squads
                         </button>
-                        <div className="flex bg-slate-200 p-1 rounded-full shadow-inner">
-                            <button onClick={() => setSquadTab('actions')} className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${squadTab === 'actions' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Missões</button>
-                            <button onClick={() => setSquadTab('polls')} className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${squadTab === 'polls' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Votações</button>
-                        </div>
                     </div>
 
                     <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-200 relative">
@@ -525,11 +489,9 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                             </div>
                         </div>
 
-                        {/* SEPARADOR: ACTIONS */}
-                        {squadTab === 'actions' && (
-                            <div className="animate-in fade-in duration-300">
+                        <div className="animate-in fade-in duration-300">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-2xl font-bold text-slate-800">Missões Agendadas</h3>
+                                    <h3 className="text-2xl font-bold text-slate-800">Actions Agendadas</h3>
                                     <button onClick={() => setShowCreateActionModal(true)} className="px-6 py-2 bg-amber-500 text-white rounded-full text-sm font-bold hover:bg-amber-600 transition-all shadow-md">
                                         + Criar Action
                                     </button>
@@ -569,81 +531,14 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                                         );
                                     })}
                                     {(!selectedSquad.actions || selectedSquad.actions.length === 0) && (
-                                        <p className="text-center py-10 text-slate-400 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">Nenhuma missão agendada.</p>
+                                        <p className="text-center py-10 text-slate-400 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">Nenhuma action agendada.</p>
                                     )}
                                 </div>
                             </div>
-                        )}
-
-                        {/* SEPARADOR: VOTAÇÕES */}
-                        {squadTab === 'polls' && (
-                            <div className="animate-in fade-in duration-300">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-2xl font-bold text-slate-800">Decisões do Grupo</h3>
-                                    <button onClick={() => setShowCreatePollModal(true)} className="px-6 py-2 bg-indigo-500 text-white rounded-full text-sm font-bold hover:bg-indigo-600 transition-all shadow-md">
-                                        + Nova Votação
-                                    </button>
-                                </div>
-                                <div className="space-y-6">
-                                    {selectedSquad.polls?.map((poll: any) => (
-                                        <div key={poll.id} className="p-6 border border-slate-200 rounded-2xl bg-white shadow-sm relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 bg-indigo-100 text-indigo-700 px-4 py-1 text-[10px] font-black uppercase tracking-widest rounded-bl-xl">{poll.estado}</div>
-                                            <h4 className="font-bold text-slate-800 text-lg mb-2">{poll.pergunta}</h4>
-                                            <p className="text-xs text-slate-400 mb-6">Encerra a {new Date(poll.data_limite).toLocaleDateString('pt-PT')}</p>
-                                            
-                                            <div className="space-y-3">
-                                                {(() => {
-                                                    // FIX: verifica se o utilizador já votou nesta poll usando o seu ID
-                                                    const jaVotei = userData && poll.votes?.some((v: any) => v.userId === userData.id);
-                                                    return poll.opcoes?.map((opcao: string, index: number) => {
-                                                        const votos = poll.votes?.filter((v: any) => v.poll_option === opcao).length || 0;
-                                                        const totalVotos = poll.votes?.length || 1;
-                                                        const percentagem = Math.round((votos / totalVotos) * 100);
-                                                        const oMeuVoto = poll.votes?.find((v: any) => v.userId === userData?.id)?.poll_option === opcao;
-
-                                                        return (
-                                                            <div
-                                                                key={index}
-                                                                className={`relative h-12 rounded-xl border bg-slate-50 overflow-hidden transition-colors ${jaVotei ? 'cursor-not-allowed border-slate-200 opacity-80' : 'cursor-pointer hover:border-indigo-400 border-slate-200'} ${oMeuVoto ? 'border-indigo-400 ring-1 ring-indigo-300' : ''}`}
-                                                                onClick={() => !jaVotei && handleVote(poll.id, opcao)}
-                                                                title={jaVotei ? "Já votaste nesta votação" : `Votar em "${opcao}"`}
-                                                            >
-                                                                <div className="absolute top-0 left-0 h-full bg-indigo-100 transition-all duration-500" style={{ width: `${percentagem}%` }}></div>
-                                                                <div className="absolute inset-0 flex items-center justify-between px-4">
-                                                                    <span className="font-bold text-slate-700 text-sm z-10">{opcao}{oMeuVoto && <span className="ml-2 text-indigo-500 text-[10px]">✓ O teu voto</span>}</span>
-                                                                    <span className="font-bold text-indigo-700 text-sm z-10">{percentagem}% ({votos})</span>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    });
-                                                })()}
-                                            </div>
-
-                                            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
-                                                <button 
-                                                    onClick={() => handleConvertPollToAction(poll)}
-                                                    className="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all shadow-sm flex items-center gap-2"
-                                                >
-                                                    ⚡ Transformar Vencedor em Missão
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!selectedSquad.polls || selectedSquad.polls.length === 0) && (
-                                        <div className="p-10 border border-dashed border-slate-200 rounded-2xl bg-slate-50 text-center">
-                                            <div className="text-4xl mb-4">📊</div>
-                                            <p className="text-slate-500 font-bold">Sem votações ativas</p>
-                                            <p className="text-slate-400 text-xs mt-1">Cria uma votação para decidirem o que fazer a seguir!</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
 
-            {/* MODAL: VER DETALHES DA ACTION E ACEITAR MISSÃO */}
             {selectedAction && (
                 <div className="fixed inset-0 z-[700] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200">
@@ -655,46 +550,110 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                             <button onClick={() => setSelectedAction(null)} className="text-slate-400 hover:text-slate-700 text-3xl">&times;</button>
                         </div>
 
-                        <p className="text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm mb-6">{selectedAction.descricao || "Sem briefing."}</p>
+                        <p className="text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm mb-4">{selectedAction.descricao || "Sem briefing."}</p>
 
-                        {/* FRENTE 1: ACEITAÇÃO E PROVA */}
-                        <div className="p-5 border-2 border-slate-100 rounded-2xl">
-                            <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">🎯 Estado da Missão</h4>
-                            
+                        {selectedAction.latitude && selectedAction.longitude && (
                             <div className="mb-6">
-                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
-                                    <span>Progresso Global</span>
-                                    <span>{selectedAction.participations?.length || 0} Aceitaram</span>
-                                </div>
-                                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(((selectedAction.participations?.length || 0) / 10) * 100, 100)}%` }}></div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <button onClick={() => handleParticipate(selectedAction.id)} className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex justify-center items-center gap-2">
-                                    ✋ Aceitar Missão
-                                </button>
-
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex gap-2">
-                                    <input 
-                                        type="url" 
-                                        placeholder="Cola aqui o link da imagem da prova..." 
-                                        value={evidenceUrl}
-                                        onChange={(e) => setEvidenceUrl(e.target.value)}
-                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-emerald-500"
-                                    />
-                                    <button onClick={() => handleSubmitEvidence(selectedAction.id)} className="px-4 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm">
-                                        📸 Enviar Prova
-                                    </button>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">📍 Localização</p>
+                                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md h-40">
+                                    <iframe
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 0 }}
+                                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${selectedAction.longitude - 0.005},${selectedAction.latitude - 0.005},${selectedAction.longitude + 0.005},${selectedAction.latitude + 0.005}&layer=mapnik&marker=${selectedAction.latitude},${selectedAction.longitude}`}
+                                    ></iframe>
                                 </div>
                             </div>
-                        </div>
+                        )}
+
+                        {(() => {
+                            const estado = determineEstado(selectedAction);
+                            const isParticipating = userData && selectedAction?.participations?.some((p: any) => p.userId === userData.id);
+
+                            return (
+                                <div className="p-5 border-2 border-slate-100 rounded-2xl space-y-4">
+                                    <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">🎯 Estado da Missão
+                                        <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                            estado === 'Planeamento' ? 'bg-blue-100 text-blue-700' :
+                                            estado === 'Em curso' ? 'bg-amber-100 text-amber-700' :
+                                            estado === 'Concluída' ? 'bg-emerald-100 text-emerald-700' :
+                                            'bg-red-100 text-red-700'
+                                        }`}>{estado}</span>
+                                    </h4>
+
+                                    <div>
+                                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                                            <span>Mobilização</span>
+                                            <span>{selectedAction.participations?.length || 0} confirmados</span>
+                                        </div>
+                                        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(((selectedAction.participations?.length || 0) / 10) * 100, 100)}%` }}></div>
+                                        </div>
+                                    </div>
+
+                                    {selectedAction.participations?.length > 0 && (
+                                        <div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Quem vai</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {selectedAction.participations.map((p: any) => (
+                                                    <div key={p.id} className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1">
+                                                        <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(p.user?.nome || '?')}&background=d1fae5&color=065f46&size=64&bold=true`} alt={p.user?.nome} className="w-5 h-5 rounded-full" />
+                                                        <span className="text-xs font-bold text-emerald-800">{p.user?.nome || 'Utilizador'}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {estado === 'Cancelado' && (
+                                        <p className="text-center py-3 text-sm font-bold text-red-500 bg-red-50 rounded-xl border border-red-100">Esta missão foi cancelada.</p>
+                                    )}
+
+                                    {estado === 'Planeamento' && (
+                                        <>
+                                            <button onClick={() => handleParticipate(selectedAction.id)} className={`w-full py-3 rounded-xl text-sm font-bold shadow-md transition-all flex justify-center items-center gap-2 ${isParticipating ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                                                {isParticipating ? '❌ Cancelar Participação' : '✋ Aceitar Missão'}
+                                            </button>
+                                            <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">Provas disponíveis quando a missão começar</p>
+                                        </>
+                                    )}
+
+                                    {estado === 'Em curso' && (
+                                        <>
+                                            <button onClick={() => handleParticipate(selectedAction.id)} className={`w-full py-3 rounded-xl text-sm font-bold shadow-md transition-all flex justify-center items-center gap-2 ${isParticipating ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                                                {isParticipating ? '❌ Cancelar Participação' : '✋ Aceitar Missão'}
+                                            </button>
+                                            <EvidenceUpload evidenceFile={evidenceFile} setEvidenceFile={setEvidenceFile} onSubmit={() => handleSubmitEvidence(selectedAction.id)} />
+                                        </>
+                                    )}
+
+                                    {estado === 'Concluída' && (
+                                        <EvidenceUpload evidenceFile={evidenceFile} setEvidenceFile={setEvidenceFile} onSubmit={() => handleSubmitEvidence(selectedAction.id)} />
+                                    )}
+
+                                    {selectedAction.evidences?.length > 0 && (
+                                        <div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Provas Submetidas ({selectedAction.evidences.length})</p>
+                                            <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto">
+                                                {selectedAction.evidences.map((ev: any) => (
+                                                    <a key={ev.id} href={ev.imagem_url} target="_blank" rel="noreferrer" className="group block rounded-xl overflow-hidden border border-slate-200 hover:border-emerald-400 transition-colors">
+                                                        <img src={ev.imagem_url} alt="Prova" className="w-full h-24 object-cover group-hover:opacity-90 transition-opacity" />
+                                                        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-white">
+                                                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(ev.user?.nome || '?')}&background=f1f5f9&color=475569&size=32&bold=true`} className="w-4 h-4 rounded-full shrink-0" alt={ev.user?.nome} />
+                                                            <span className="text-[10px] font-bold text-slate-600 truncate">{ev.user?.nome || 'Utilizador'}</span>
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
 
-            {/* MODAL: CRIAR SQUAD */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
@@ -711,44 +670,29 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: CRIAR VOTAÇÃO */}
-            {showCreatePollModal && (
-                <div className="fixed inset-0 z-[500] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
-                        <h3 className="text-2xl font-bold mb-6 text-slate-800">📊 Criar Votação</h3>
-                        <form onSubmit={handleCreatePoll} className="space-y-4">
-                            <input type="text" placeholder="Qual é a pergunta? (ex: Onde vamos?)" value={pollForm.pergunta} onChange={e => setPollForm({...pollForm, pergunta: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500" required />
-                            <div className="relative">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase absolute -top-2 left-4 bg-white px-2">Data Limite</label>
-                                <input type="datetime-local" value={pollForm.data_limite} onChange={e => setPollForm({...pollForm, data_limite: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500" required />
-                            </div>
-                            
-                            <div className="space-y-2 pt-2 border-t border-slate-100">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">Opções de Voto</label>
-                                {pollForm.opcoes.map((opcao, index) => (
-                                    <input key={index} type="text" placeholder={`Opção ${index + 1}`} value={opcao} onChange={e => handlePollOptionChange(index, e.target.value)} className="w-full p-3 bg-white rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm" required />
-                                ))}
-                                <button type="button" onClick={handleAddPollOption} className="w-full py-2 text-indigo-500 text-xs font-bold bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">+ Adicionar Opção</button>
-                            </div>
-
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setShowCreatePollModal(false)} className="flex-1 py-4 font-bold text-slate-500 bg-slate-100 rounded-full">Cancelar</button>
-                                <button type="submit" className="flex-1 py-4 font-bold text-white bg-indigo-600 rounded-full shadow-lg">Lançar Votação</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL: CRIAR ACTION */}
             {showCreateActionModal && (
                 <div className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">
                         <h3 className="text-2xl font-bold mb-6 text-slate-800">⚙️ Nova Action</h3>
                         <form onSubmit={handleCreateAction} className="space-y-4">
                             <input type="text" placeholder="Título da Action" value={actionForm.titulo} onChange={e => setActionForm({...actionForm, titulo: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-amber-500" required />
-                            <input type="text" placeholder="Categoria (ex: Desporto, Reunião)" value={actionForm.categoria} onChange={e => setActionForm({...actionForm, categoria: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-amber-500" required />
-                            
+                            <div className="flex gap-2">
+                                <input type="text" placeholder="Categoria (ex: Desporto, Social, etc...)" value={actionForm.categoria} onChange={e => setActionForm({...actionForm, categoria: e.target.value})} className="flex-1 p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-amber-500" required />
+                                <button
+                                    type="button"
+                                    onClick={handleSuggestMission}
+                                    disabled={isAiLoading || actionForm.titulo.trim().length < 2 || actionForm.categoria.trim().length < 2}
+                                    className="px-4 bg-violet-600 text-white rounded-2xl font-bold hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm shrink-0 flex items-center gap-1.5"
+                                    title="Pedir à IA para sugerir uma descrição de missão"
+                                >
+                                    {isAiLoading
+                                        ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        : '✨'
+                                    }
+                                    {isAiLoading ? 'A gerar...' : 'Sugerir'}
+                                </button>
+                            </div>
+
                             <div className="relative">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute -top-2 left-4 bg-white px-2">Data e Hora</label>
                                 <input type="datetime-local" min={getMinDateTime()} value={actionForm.dataHora} onChange={e => setActionForm({...actionForm, dataHora: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-amber-500" required />
@@ -777,7 +721,6 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: EDITAR ACTION */}
             {showEditActionModal && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">
@@ -814,7 +757,6 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: CANCELAR ACTION */}
             {showCancelModal && (
                 <div className="fixed inset-0 z-[500] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 text-center">
@@ -829,7 +771,6 @@ export const UserSquads = ({ token, userData }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: PROCURAR SQUADS */}
             {showSearchModal && (
                 <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[80vh]">

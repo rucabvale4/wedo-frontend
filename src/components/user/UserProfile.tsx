@@ -126,7 +126,7 @@ export const UserProfile = ({ userData, token, perfilColor, setPerfilColor, onUp
                     </div>
                     <div className="bg-white border border-slate-200 rounded-3xl p-8 relative overflow-hidden group">
                         <div className="absolute -right-6 -bottom-6 text-9xl opacity-5 group-hover:scale-110 transition-transform">🔥</div>
-                        <h4 className="text-slate-400 font-bold uppercase text-[10px] mb-2">Ofensiva Atual</h4>
+                        <h4 className="text-slate-400 font-bold uppercase text-[10px] mb-2">Streak Atual</h4>
                         <div className="flex items-baseline gap-2 text-slate-800">
                             <span className="text-6xl font-black">{userData.streak || 0}</span>
                             <span className="text-xl font-bold text-slate-400">Dias</span>

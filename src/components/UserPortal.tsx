@@ -120,10 +120,9 @@ export const UserPortal = ({ token, onLogout }: UserPortalProps) => {
                 )}
                 
                 {currentView === 'actions' && authToken && (
-                    <UserActions token={authToken} />
+                    <UserActions token={authToken} userData={userData} />
                 )}
                 
-                {/* FIX #7: userData passado para UserFriends para filtrar o próprio utilizador */}
                 {currentView === 'friends' && authToken && (
                     <UserFriends token={authToken} userData={userData} />
                 )}

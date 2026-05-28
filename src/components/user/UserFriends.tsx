@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 interface UserFriendsProps {
     token: string;
-    userData?: any; // Para não apareceres na lista de pesquisa
+    userData?: any;
 }
 
 export const UserFriends = ({ token, userData }: UserFriendsProps) => {
@@ -11,7 +11,6 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
     const [isLoading, setIsLoading] = useState(true);
     const [toastMessage, setToastMessage] = useState('');
 
-    // ESTADOS PARA O MODAL DE DESCOBERTA
     const [showAddModal, setShowAddModal] = useState(false);
     const [globalUsers, setGlobalUsers] = useState<any[]>([]);
     const [searchGlobal, setSearchGlobal] = useState('');
@@ -43,10 +42,9 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
         }
     };
 
-    // Abre o Modal e vai buscar TODOS os utilizadores à base de dados
     const openAddModal = async () => {
         setShowAddModal(true);
-        setSearchGlobal(''); // Limpa a pesquisa anterior
+        setSearchGlobal('')
         setIsLoadingGlobal(true);
         try {
             const res = await fetch('http://localhost:3000/api/users', {
@@ -63,7 +61,6 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
         }
     };
 
-    // Função para adicionar amigo diretamente pelo Modal
     const handleAddFriend = async (friendId: number) => {
         try {
             const res = await fetch('http://localhost:3000/api/users/friends', {
@@ -76,10 +73,8 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
             });
 
             if (res.ok) {
-                triggerToast("Amigo adicionado à tua rede! ✨");
-                fetchMyFriends(); // Atualiza o ecrã de trás automaticamente
-                // Podes fechar o modal aqui com setShowAddModal(false), 
-                // mas vamos deixar aberto caso queiras adicionar mais de uma pessoa!
+                triggerToast("Amigo adicionado! ✨");
+                fetchMyFriends();
             } else {
                 alert("Atenção Backend: A rota POST /api/users/friends falhou.");
             }
@@ -88,18 +83,16 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
         }
     };
 
-    // Filtro da lista principal
     const filteredFriends = friends.filter(friend => 
         friend.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         friend.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Filtro do Modal (Tira Admins, a tua própria conta, e quem já é teu amigo)
     const myFriendsIds = friends.map(f => f.id);
     const filteredGlobalUsers = globalUsers.filter(user => {
         const isNotMe = userData ? user.id !== userData.id : true;
         const isNotAdmin = user.role !== 'ADMIN';
-        const isNotAlreadyFriend = !myFriendsIds.includes(user.id); // Esconde se já for amigo
+        const isNotAlreadyFriend = !myFriendsIds.includes(user.id);
         const matchesSearch = user.nome.toLowerCase().includes(searchGlobal.toLowerCase()) || 
                               user.email.toLowerCase().includes(searchGlobal.toLowerCase());
         
@@ -120,16 +113,16 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
             <header className="mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
                     <h2 className="text-4xl font-light italic text-slate-700 border-b-2 border-slate-300 inline-block pb-2">
-                        A Minha Rede
+                        Os Meus Amigos
                     </h2>
-                    <p className="text-slate-400 text-xs mt-2">Histórico de camaradas e conexões confirmadas</p>
+                    <p className="text-slate-400 text-xs mt-2">Histórico de amigos e conexões confirmadas</p>
                 </div>
                 
                 <div className="flex gap-3 w-full sm:w-auto">
                     {friends.length > 0 && (
                         <input 
                             type="text" 
-                            placeholder="🔍 Pesquisar na minha rede..." 
+                            placeholder="🔍 Pesquisar nos amigos..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 flex-1 sm:w-64 shadow-sm transition-colors"
@@ -151,9 +144,9 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
             ) : friends.length === 0 ? (
                 <div className="bg-white rounded-[3rem] p-16 shadow-sm border border-slate-200 text-center max-w-3xl mx-auto">
                     <div className="text-7xl mb-8">👥</div>
-                    <h3 className="text-3xl font-bold text-slate-800 mb-2">A tua rede está isolada</h3>
+                    <h3 className="text-3xl font-bold text-slate-800 mb-2">Ainda sem amigos?</h3>
                     <p className="text-slate-500 max-w-md mx-auto leading-relaxed mb-8">
-                        Ainda não tens amigos na plataforma. Clica no botão acima para pesquisar e adicionar utilizadores à tua equipa!
+                        Clica no botão abaixo para pesquisar e adicionar utilizadores!
                     </p>
                     <button onClick={openAddModal} className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold shadow-lg hover:bg-blue-700 transition-all">
                         🔍 Encontrar Pessoas
@@ -182,7 +175,6 @@ export const UserFriends = ({ token, userData }: UserFriendsProps) => {
                 </div>
             )}
 
-            {/* MODAL PARA PROCURAR E ADICIONAR PESSOAS */}
             {showAddModal && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
