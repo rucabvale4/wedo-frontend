@@ -111,13 +111,22 @@ export const UserPortal = ({ token, onLogout }: UserPortalProps) => {
 
             <main className="flex-1 overflow-y-auto p-12 z-0 relative">
                 
-                {currentView === 'feed' && authToken && <UserFeed token={authToken} userData={userData} />}
+                {currentView === 'feed' && authToken && (
+                    <UserFeed token={authToken} userData={userData} />
+                )}
                 
-                {currentView === 'squads' && authToken && (<UserSquads token={authToken} />)}
+                {currentView === 'squads' && authToken && (
+                    <UserSquads token={authToken} userData={userData} />
+                )}
                 
-                {currentView === 'actions' && authToken && <UserActions token={authToken} />}
+                {currentView === 'actions' && authToken && (
+                    <UserActions token={authToken} />
+                )}
                 
-                {currentView === 'friends' && authToken && <UserFriends token={authToken} />}
+                {/* FIX #7: userData passado para UserFriends para filtrar o próprio utilizador */}
+                {currentView === 'friends' && authToken && (
+                    <UserFriends token={authToken} userData={userData} />
+                )}
                 
                 {currentView === 'profile' && userData && authToken && (
                     <UserProfile 

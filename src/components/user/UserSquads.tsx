@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 
 interface UserSquadsProps {
     token: string;
+    userData?: any; // FIX: necessário para saber se o utilizador já votou
 }
 
-export const UserSquads = ({ token }: UserSquadsProps) => {
+export const UserSquads = ({ token, userData }: UserSquadsProps) => {
     const [mySquads, setMySquads] = useState<any[]>([]);
     const [globalSquads, setGlobalSquads] = useState<any[]>([]);
     
@@ -13,6 +14,9 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     
+    // NOVO: Separadores do Squad
+    const [squadTab, setSquadTab] = useState<'actions' | 'polls'>('actions'); 
+
     // Nova Action
     const [showCreateActionModal, setShowCreateActionModal] = useState(false);
     const [actionForm, setActionForm] = useState({ 
@@ -20,7 +24,7 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
         morada: '', latitude: undefined as number | undefined, longitude: undefined as number | undefined 
     });
 
-    // Editar Action (NOVO)
+    // Editar Action
     const [showEditActionModal, setShowEditActionModal] = useState(false);
     const [actionToEdit, setActionToEdit] = useState<number | null>(null);
     const [editActionForm, setEditActionForm] = useState({ 
@@ -32,6 +36,14 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [actionToCancel, setActionToCancel] = useState<number | null>(null);
     
+    // NOVO: Detalhes da Action, Aceitação e Provas (Frente 1)
+    const [selectedAction, setSelectedAction] = useState<any>(null);
+    const [evidenceUrl, setEvidenceUrl] = useState('');
+
+    // NOVO: Votações (Frente 2)
+    const [showCreatePollModal, setShowCreatePollModal] = useState(false);
+    const [pollForm, setPollForm] = useState({ pergunta: '', data_limite: '', opcoes: [''] });
+
     // Squads
     const [createForm, setCreateForm] = useState({ nomeSquad: '', descricao: '' });
     const [editForm, setEditForm] = useState({ nomeSquad: '', descricao: '' });
@@ -45,7 +57,7 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
 
     const triggerToast = (msg: string) => {
         setSuccessMessage(msg);
-        setTimeout(() => setSuccessMessage(''), 2000);
+        setTimeout(() => setSuccessMessage(''), 3000);
     };
 
     const getMinDateTime = () => {
@@ -87,6 +99,16 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                     if (current) return data.find((s: any) => s.id === current.id) || current;
                     return null;
                 });
+
+                // Atualiza a Action selecionada no modal se estiver aberto
+                setSelectedAction((currentAction: any) => {
+                    if (!currentAction) return null;
+                    for (const squad of data) {
+                        const updated = squad.actions?.find((a: any) => a.id === currentAction.id);
+                        if (updated) return updated;
+                    }
+                    return currentAction;
+                });
             }
         } catch (err) { console.error("Erro ao carregar os squads:", err); }
     };
@@ -109,6 +131,128 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
         setShowSearchModal(true);
     };
 
+    // --- FUNÇÕES DA FRENTE 1 (ACEITAR E PROVAR) ---
+    const handleParticipate = async (actionId: number) => {
+        try {
+            const res = await fetch(`http://localhost:3000/api/actions/${actionId}/participate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                triggerToast("✋ Missão aceite! Vemo-nos no terreno!");
+                fetchMySquads(); 
+            } else {
+                alert("Atenção Backend: Rota POST /api/actions/:id/participate em falta!");
+            }
+        } catch (err) { alert("Erro de ligação."); }
+    };
+
+    const handleSubmitEvidence = async (actionId: number) => {
+        if (!evidenceUrl) return alert("Cola o link da imagem da prova primeiro!");
+        try {
+            const res = await fetch(`http://localhost:3000/api/actions/${actionId}/evidence`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ imagem_url: evidenceUrl })
+            });
+            if (res.ok) {
+                triggerToast("📸 Prova submetida e a aguardar validação!");
+                setEvidenceUrl('');
+                fetchMySquads();
+            } else {
+                alert("Atenção Backend: Rota POST /api/actions/:id/evidence em falta!");
+            }
+        } catch (err) { alert("Erro de ligação."); }
+    };
+
+    // --- FUNÇÕES DA FRENTE 2 (VOTAÇÕES) ---
+    const handleAddPollOption = () => setPollForm({ ...pollForm, opcoes: [...pollForm.opcoes, ''] });
+    
+    const handlePollOptionChange = (index: number, value: string) => {
+        const newOpcoes = [...pollForm.opcoes];
+        newOpcoes[index] = value;
+        setPollForm({ ...pollForm, opcoes: newOpcoes });
+    };
+
+    const handleCreatePoll = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`http://localhost:3000/api/squads/${selectedSquad.id}/polls`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(pollForm)
+            });
+            if (res.ok) {
+                setShowCreatePollModal(false);
+                triggerToast("📊 Votação criada com sucesso!");
+                fetchMySquads();
+                setPollForm({ pergunta: '', data_limite: '', opcoes: [''] });
+            } else {
+                alert("Atenção Backend: Rota POST /api/squads/:id/polls em falta!");
+            }
+        } catch (err) { alert("Erro de ligação."); }
+    };
+
+    const handleVote = async (pollId: number, option: string) => {
+        try {
+            // FIX: a rota correta é /api/squads/polls/:id/vote (não /api/polls/:id/vote)
+            const res = await fetch(`http://localhost:3000/api/squads/polls/${pollId}/vote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ poll_option: option })
+            });
+            if (res.ok) {
+                triggerToast("✅ Voto registado!");
+                fetchMySquads();
+            } else if (res.status === 409) {
+                // O backend vai retornar 409 quando o @@unique([pollId, userId]) for violado
+                triggerToast("⚠️ Já votaste nesta votação.");
+            } else {
+                const errData = await res.json();
+                triggerToast(`Erro: ${errData.error || "Não foi possível registar o voto."}`);
+            }
+        } catch (err) { alert("Erro de ligação."); }
+    };
+
+    const handleConvertPollToAction = async (poll: any) => {
+        if (!poll.votes || poll.votes.length === 0) return alert("Ainda não há votos suficientes para tomar uma decisão!");
+        
+        // Descobre qual foi a opção mais votada
+        const counts = poll.opcoes.map((opcao: string) => {
+            return {
+                opcao,
+                votos: poll.votes.filter((v: any) => v.poll_option === opcao).length
+            };
+        });
+        
+        const winner = counts.reduce((max: any, current: any) => current.votos > max.votos ? current : max, counts[0]);
+
+        try {
+            const res = await fetch('http://localhost:3000/api/actions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    titulo: `Missão: ${winner.opcao}`,
+                    categoria: 'Votação Comunitária',
+                    descricao: `Esta missão nasceu da votação: "${poll.pergunta}". A opção vencedora pelo grupo foi "${winner.opcao}" com ${winner.votos} voto(s).`,
+                    squadId: selectedSquad.id,
+                    estado: 'Planeamento',
+                })
+            });
+
+            if (res.ok) {
+                triggerToast(`🎉 Missão "${winner.opcao}" criada no Quartel!`);
+                fetchMySquads();
+                setSquadTab('actions'); // Muda logo para a tab de Actions para verem o resultado
+            } else {
+                alert("Erro ao converter votação em Action. Verifica as rotas do Backend.");
+            }
+        } catch (err) {
+            alert("Erro de ligação ao servidor.");
+        }
+    };
+
+    // --- FUNÇÕES ORIGINAIS DO SQUAD/ACTIONS ---
     const handleCreateSquad = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -215,7 +359,7 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
             categoria: action.categoria,
             descricao: action.descricao || '',
             dataHora: formatDateTimeForInput(action.data_hora),
-            morada: '', // A morada original não está na BD, apenas as coordenadas. O utilizador pode escrever uma nova se quiser atualizar.
+            morada: '', 
             latitude: action.latitude,
             longitude: action.longitude
         });
@@ -274,12 +418,13 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
         setSelectedSquad(squad);
         setEditForm({ nomeSquad: squad.nomeSquad, descricao: squad.descricao || '' });
         setActiveView('detail');
+        setSquadTab('actions'); // Garante que abre no separador de Missões
     };
 
     return (
         <section className="animate-in fade-in duration-500">
             {successMessage && (
-                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[700] animate-in fade-in slide-in-from-top-4 duration-300">
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[800] animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="bg-emerald-500/90 backdrop-blur-sm text-white px-5 py-2 rounded-xl shadow-lg border border-emerald-400/50 flex items-center gap-2">
                         <span>✅</span>
                         <span className="text-xs font-bold tracking-tight">{successMessage}</span>
@@ -313,13 +458,12 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
                             {mySquads.map((squad) => (
-                                <div key={squad.id} className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:border-blue-400 transition-all group">
+                                <div key={squad.id} className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:border-blue-400 transition-all group cursor-pointer" onClick={() => openSquadDetails(squad)}>
                                     <div className="text-3xl mb-4 group-hover:scale-110 transition-transform">🛡️</div>
                                     <h3 className="text-xl font-bold mb-1 text-slate-800">{squad.nomeSquad}</h3>
                                     <p className="text-sm text-slate-500 mb-4 line-clamp-2">{squad.descricao || "Sem descrição."}</p>
                                     <div className="flex justify-between items-center pt-4 border-t border-slate-50">
-                                        <button className="text-xs font-bold text-slate-400 hover:text-blue-600">+ Convidar</button>
-                                        <button onClick={() => openSquadDetails(squad)} className="text-xs font-bold text-blue-600 hover:underline">Ver Squad</button>
+                                        <span className="text-xs font-bold text-blue-600 group-hover:underline">Entrar no Quartel ↗</span>
                                     </div>
                                 </div>
                             ))}
@@ -334,9 +478,10 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                         <button onClick={() => { setActiveView('list'); setIsEditing(false); }} className="text-slate-500 hover:text-slate-800 font-bold flex items-center gap-2 transition-colors">
                             <span className="text-xl">←</span> Voltar aos Squads
                         </button>
-                        <button onClick={() => setShowCreateActionModal(true)} className="px-6 py-3 bg-amber-500 text-white rounded-full text-sm font-bold hover:bg-amber-600 transition-all shadow-md flex items-center gap-2">
-                            <span className="text-lg">⚙️</span> Criar Action
-                        </button>
+                        <div className="flex bg-slate-200 p-1 rounded-full shadow-inner">
+                            <button onClick={() => setSquadTab('actions')} className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${squadTab === 'actions' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Missões</button>
+                            <button onClick={() => setSquadTab('polls')} className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${squadTab === 'polls' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Votações</button>
+                        </div>
                     </div>
 
                     <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-200 relative">
@@ -346,7 +491,7 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                             </button>
                         )}
 
-                        <div className="flex flex-col md:flex-row gap-10">
+                        <div className="flex flex-col md:flex-row gap-10 mb-10 border-b border-slate-100 pb-10">
                             <div className="w-32 h-32 bg-slate-100 rounded-3xl flex items-center justify-center text-5xl shrink-0">🛡️</div>
                             
                             <div className="flex-1 space-y-4">
@@ -355,8 +500,8 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                                         <h1 className="text-4xl font-bold text-slate-800 pr-12">{selectedSquad.nomeSquad}</h1>
                                         <p className="text-slate-500 text-lg">{selectedSquad.descricao || "Este squad ainda não tem uma descrição oficial."}</p>
                                         
-                                        <div className="pt-8 border-t border-slate-100 mt-8">
-                                            <h3 className="text-xl font-bold text-slate-800 mb-4">Membros ({selectedSquad.users?.length || 0})</h3>
+                                        <div className="pt-8 border-t border-slate-100 mt-4">
+                                            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Membros ({selectedSquad.users?.length || 0})</h3>
                                             <div className="flex flex-wrap gap-4">
                                                 {selectedSquad.users && selectedSquad.users.map((user: any) => (
                                                     <div key={user.id} className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-full border border-slate-200">
@@ -364,53 +509,6 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                                                         <p className="text-sm font-bold text-slate-700 leading-none">{user.nome}</p>
                                                     </div>
                                                 ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-8 border-t border-slate-100 mt-8">
-                                            <h3 className="text-xl font-bold text-slate-800 mb-4">Actions Agendadas ({selectedSquad.actions?.length || 0})</h3>
-                                            <div className="space-y-4">
-                                                {selectedSquad.actions && selectedSquad.actions.map((action: any) => {
-                                                    const estadoDinamico = determineEstado(action);
-                                                    let corEstado = "bg-slate-100 text-slate-600";
-                                                    if (estadoDinamico === 'Planeamento') corEstado = "bg-blue-100 text-blue-700";
-                                                    if (estadoDinamico === 'Em curso') corEstado = "bg-amber-100 text-amber-700";
-                                                    if (estadoDinamico === 'Concluída') corEstado = "bg-emerald-100 text-emerald-700";
-                                                    if (estadoDinamico === 'Cancelado') corEstado = "bg-red-100 text-red-700";
-
-                                                    return (
-                                                        <div key={action.id} className="p-5 border border-slate-200 rounded-2xl flex flex-col md:flex-row justify-between md:items-center gap-4 bg-slate-50 hover:border-blue-200 transition-colors">
-                                                            <div>
-                                                                <div className="flex items-center gap-3 mb-1">
-                                                                    <h4 className="font-bold text-slate-800">{action.titulo}</h4>
-                                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${corEstado}`}>{estadoDinamico}</span>
-                                                                </div>
-                                                                <p className="text-sm text-slate-500 mb-3 line-clamp-1">{action.descricao}</p>
-                                                                <div className="flex gap-4 text-xs font-medium text-slate-500">
-                                                                    <span className="bg-white px-3 py-1 rounded border border-slate-200 shadow-sm">
-                                                                        📅 {new Date(action.data_hora).toLocaleString('pt-PT').slice(0, 16)}
-                                                                    </span>
-                                                                    <span className="bg-white px-3 py-1 rounded border border-slate-200 shadow-sm">
-                                                                        🏷️ {action.categoria}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex gap-2 shrink-0 mt-4 md:mt-0">
-                                                                {estadoDinamico === 'Planeamento' && (
-                                                                    <>
-                                                                        {/* BOTÃO EDITAR */}
-                                                                        <button onClick={() => openEditActionModal(action)} className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-50 transition-all">
-                                                                            ✏️ Editar
-                                                                        </button>
-                                                                        <button onClick={() => confirmCancelAction(action.id)} className="px-4 py-2 bg-white border border-red-200 text-red-500 rounded-xl text-xs font-bold hover:bg-red-50 transition-all">
-                                                                            ❌ Cancelar
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
                                             </div>
                                         </div>
                                     </>
@@ -424,6 +522,172 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* SEPARADOR: ACTIONS */}
+                        {squadTab === 'actions' && (
+                            <div className="animate-in fade-in duration-300">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-2xl font-bold text-slate-800">Missões Agendadas</h3>
+                                    <button onClick={() => setShowCreateActionModal(true)} className="px-6 py-2 bg-amber-500 text-white rounded-full text-sm font-bold hover:bg-amber-600 transition-all shadow-md">
+                                        + Criar Action
+                                    </button>
+                                </div>
+                                <div className="space-y-4">
+                                    {selectedSquad.actions && selectedSquad.actions.map((action: any) => {
+                                        const estadoDinamico = determineEstado(action);
+                                        let corEstado = "bg-slate-100 text-slate-600";
+                                        if (estadoDinamico === 'Planeamento') corEstado = "bg-blue-100 text-blue-700";
+                                        if (estadoDinamico === 'Em curso') corEstado = "bg-amber-100 text-amber-700";
+                                        if (estadoDinamico === 'Concluída') corEstado = "bg-emerald-100 text-emerald-700";
+                                        if (estadoDinamico === 'Cancelado') corEstado = "bg-red-100 text-red-700";
+
+                                        return (
+                                            <div key={action.id} className="p-5 border border-slate-200 rounded-2xl flex flex-col md:flex-row justify-between md:items-center gap-4 bg-slate-50 hover:border-blue-200 transition-colors">
+                                                <div>
+                                                    <div className="flex items-center gap-3 mb-1">
+                                                        <h4 className="font-bold text-slate-800">{action.titulo}</h4>
+                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${corEstado}`}>{estadoDinamico}</span>
+                                                    </div>
+                                                    <p className="text-sm text-slate-500 mb-3 line-clamp-1">{action.descricao}</p>
+                                                    <div className="flex gap-4 text-xs font-medium text-slate-500">
+                                                        <span className="bg-white px-3 py-1 rounded border border-slate-200 shadow-sm">📅 {action.data_hora ? new Date(action.data_hora).toLocaleString('pt-PT').slice(0, 16) : 'Sem Data'}</span>
+                                                        <span className="bg-white px-3 py-1 rounded border border-slate-200 shadow-sm">🏷️ {action.categoria}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 shrink-0 mt-4 md:mt-0">
+                                                    {estadoDinamico === 'Planeamento' && (
+                                                        <>
+                                                            <button onClick={() => openEditActionModal(action)} className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-50 transition-all">✏️ Editar</button>
+                                                            <button onClick={() => confirmCancelAction(action.id)} className="px-4 py-2 bg-white border border-red-200 text-red-500 rounded-xl text-xs font-bold hover:bg-red-50 transition-all">❌ Cancelar</button>
+                                                        </>
+                                                    )}
+                                                    <button onClick={() => setSelectedAction(action)} className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all shadow-sm">Ver Detalhes ↗</button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {(!selectedSquad.actions || selectedSquad.actions.length === 0) && (
+                                        <p className="text-center py-10 text-slate-400 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">Nenhuma missão agendada.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SEPARADOR: VOTAÇÕES */}
+                        {squadTab === 'polls' && (
+                            <div className="animate-in fade-in duration-300">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-2xl font-bold text-slate-800">Decisões do Grupo</h3>
+                                    <button onClick={() => setShowCreatePollModal(true)} className="px-6 py-2 bg-indigo-500 text-white rounded-full text-sm font-bold hover:bg-indigo-600 transition-all shadow-md">
+                                        + Nova Votação
+                                    </button>
+                                </div>
+                                <div className="space-y-6">
+                                    {selectedSquad.polls?.map((poll: any) => (
+                                        <div key={poll.id} className="p-6 border border-slate-200 rounded-2xl bg-white shadow-sm relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 bg-indigo-100 text-indigo-700 px-4 py-1 text-[10px] font-black uppercase tracking-widest rounded-bl-xl">{poll.estado}</div>
+                                            <h4 className="font-bold text-slate-800 text-lg mb-2">{poll.pergunta}</h4>
+                                            <p className="text-xs text-slate-400 mb-6">Encerra a {new Date(poll.data_limite).toLocaleDateString('pt-PT')}</p>
+                                            
+                                            <div className="space-y-3">
+                                                {(() => {
+                                                    // FIX: verifica se o utilizador já votou nesta poll usando o seu ID
+                                                    const jaVotei = userData && poll.votes?.some((v: any) => v.userId === userData.id);
+                                                    return poll.opcoes?.map((opcao: string, index: number) => {
+                                                        const votos = poll.votes?.filter((v: any) => v.poll_option === opcao).length || 0;
+                                                        const totalVotos = poll.votes?.length || 1;
+                                                        const percentagem = Math.round((votos / totalVotos) * 100);
+                                                        const oMeuVoto = poll.votes?.find((v: any) => v.userId === userData?.id)?.poll_option === opcao;
+
+                                                        return (
+                                                            <div
+                                                                key={index}
+                                                                className={`relative h-12 rounded-xl border bg-slate-50 overflow-hidden transition-colors ${jaVotei ? 'cursor-not-allowed border-slate-200 opacity-80' : 'cursor-pointer hover:border-indigo-400 border-slate-200'} ${oMeuVoto ? 'border-indigo-400 ring-1 ring-indigo-300' : ''}`}
+                                                                onClick={() => !jaVotei && handleVote(poll.id, opcao)}
+                                                                title={jaVotei ? "Já votaste nesta votação" : `Votar em "${opcao}"`}
+                                                            >
+                                                                <div className="absolute top-0 left-0 h-full bg-indigo-100 transition-all duration-500" style={{ width: `${percentagem}%` }}></div>
+                                                                <div className="absolute inset-0 flex items-center justify-between px-4">
+                                                                    <span className="font-bold text-slate-700 text-sm z-10">{opcao}{oMeuVoto && <span className="ml-2 text-indigo-500 text-[10px]">✓ O teu voto</span>}</span>
+                                                                    <span className="font-bold text-indigo-700 text-sm z-10">{percentagem}% ({votos})</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
+
+                                            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+                                                <button 
+                                                    onClick={() => handleConvertPollToAction(poll)}
+                                                    className="px-5 py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition-all shadow-sm flex items-center gap-2"
+                                                >
+                                                    ⚡ Transformar Vencedor em Missão
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(!selectedSquad.polls || selectedSquad.polls.length === 0) && (
+                                        <div className="p-10 border border-dashed border-slate-200 rounded-2xl bg-slate-50 text-center">
+                                            <div className="text-4xl mb-4">📊</div>
+                                            <p className="text-slate-500 font-bold">Sem votações ativas</p>
+                                            <p className="text-slate-400 text-xs mt-1">Cria uma votação para decidirem o que fazer a seguir!</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: VER DETALHES DA ACTION E ACEITAR MISSÃO */}
+            {selectedAction && (
+                <div className="fixed inset-0 z-[700] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-800">{selectedAction.titulo}</h3>
+                                <p className="text-sm font-bold text-amber-500 mt-1">{selectedAction.categoria}</p>
+                            </div>
+                            <button onClick={() => setSelectedAction(null)} className="text-slate-400 hover:text-slate-700 text-3xl">&times;</button>
+                        </div>
+
+                        <p className="text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm mb-6">{selectedAction.descricao || "Sem briefing."}</p>
+
+                        {/* FRENTE 1: ACEITAÇÃO E PROVA */}
+                        <div className="p-5 border-2 border-slate-100 rounded-2xl">
+                            <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">🎯 Estado da Missão</h4>
+                            
+                            <div className="mb-6">
+                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                                    <span>Progresso Global</span>
+                                    <span>{selectedAction.participations?.length || 0} Aceitaram</span>
+                                </div>
+                                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(((selectedAction.participations?.length || 0) / 10) * 100, 100)}%` }}></div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <button onClick={() => handleParticipate(selectedAction.id)} className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex justify-center items-center gap-2">
+                                    ✋ Aceitar Missão
+                                </button>
+
+                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex gap-2">
+                                    <input 
+                                        type="url" 
+                                        placeholder="Cola aqui o link da imagem da prova..." 
+                                        value={evidenceUrl}
+                                        onChange={(e) => setEvidenceUrl(e.target.value)}
+                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-emerald-500"
+                                    />
+                                    <button onClick={() => handleSubmitEvidence(selectedAction.id)} className="px-4 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm">
+                                        📸 Enviar Prova
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -441,6 +705,35 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                             <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={() => setShowCreateModal(false)} className="flex-1 py-4 font-bold text-slate-500 bg-slate-100 rounded-full hover:bg-slate-200">Cancelar</button>
                                 <button type="submit" className="flex-1 py-4 font-bold text-white bg-blue-600 rounded-full shadow-lg"> Criar Squad</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: CRIAR VOTAÇÃO */}
+            {showCreatePollModal && (
+                <div className="fixed inset-0 z-[500] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in duration-200">
+                        <h3 className="text-2xl font-bold mb-6 text-slate-800">📊 Criar Votação</h3>
+                        <form onSubmit={handleCreatePoll} className="space-y-4">
+                            <input type="text" placeholder="Qual é a pergunta? (ex: Onde vamos?)" value={pollForm.pergunta} onChange={e => setPollForm({...pollForm, pergunta: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500" required />
+                            <div className="relative">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase absolute -top-2 left-4 bg-white px-2">Data Limite</label>
+                                <input type="datetime-local" value={pollForm.data_limite} onChange={e => setPollForm({...pollForm, data_limite: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-indigo-500" required />
+                            </div>
+                            
+                            <div className="space-y-2 pt-2 border-t border-slate-100">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Opções de Voto</label>
+                                {pollForm.opcoes.map((opcao, index) => (
+                                    <input key={index} type="text" placeholder={`Opção ${index + 1}`} value={opcao} onChange={e => handlePollOptionChange(index, e.target.value)} className="w-full p-3 bg-white rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm" required />
+                                ))}
+                                <button type="button" onClick={handleAddPollOption} className="w-full py-2 text-indigo-500 text-xs font-bold bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">+ Adicionar Opção</button>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button type="button" onClick={() => setShowCreatePollModal(false)} className="flex-1 py-4 font-bold text-slate-500 bg-slate-100 rounded-full">Cancelar</button>
+                                <button type="submit" className="flex-1 py-4 font-bold text-white bg-indigo-600 rounded-full shadow-lg">Lançar Votação</button>
                             </div>
                         </form>
                     </div>
@@ -484,7 +777,7 @@ export const UserSquads = ({ token }: UserSquadsProps) => {
                 </div>
             )}
 
-            {/* MODAL: EDITAR ACTION (NOVO) */}
+            {/* MODAL: EDITAR ACTION */}
             {showEditActionModal && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">

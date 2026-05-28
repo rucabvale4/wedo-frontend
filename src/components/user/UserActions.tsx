@@ -8,8 +8,9 @@ export const UserActions = ({ token }: UserActionsProps) => {
     const [mySquads, setMySquads] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     
-    // Action Selecionada para os Detalhes (Mapa)
+    // Action Selecionada para os Detalhes (Mapa e Participação)
     const [selectedAction, setSelectedAction] = useState<any>(null);
+    const [evidenceUrl, setEvidenceUrl] = useState(''); // NOVO: Estado para a Prova
 
     // Funcionalidade: Editar Action
     const [showEditActionModal, setShowEditActionModal] = useState(false);
@@ -75,6 +76,42 @@ export const UserActions = ({ token }: UserActionsProps) => {
         if (now >= actionDate && now <= actionEnd) return 'Em curso';
         return 'Concluída';
     };
+
+    // --- NOVO: FUNÇÕES DA FRENTE 1 (ACEITAR E PROVAR) ---
+    const handleParticipate = async (actionId: number) => {
+        try {
+            const res = await fetch(`http://localhost:3000/api/actions/${actionId}/participate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                triggerToast("✋ Missão aceite! Vemo-nos no terreno!");
+                fetchMyActions(); 
+            } else {
+                alert("Atenção Backend: Rota POST /api/actions/:id/participate em falta!");
+            }
+        } catch (err) { alert("Erro de ligação."); }
+    };
+
+    const handleSubmitEvidence = async (actionId: number) => {
+        if (!evidenceUrl) return alert("Cola o link da imagem da prova primeiro!");
+        try {
+            const res = await fetch(`http://localhost:3000/api/actions/${actionId}/evidence`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ imagem_url: evidenceUrl })
+            });
+            if (res.ok) {
+                triggerToast("📸 Prova submetida e a aguardar validação!");
+                setEvidenceUrl('');
+                fetchMyActions();
+            } else {
+                alert("Atenção Backend: Rota POST /api/actions/:id/evidence em falta!");
+            }
+        } catch (err) { alert("Erro de ligação."); }
+    };
+
+    // --- FIM FRENTE 1 ---
 
     const handleEditActionGetCoordinates = async () => {
         if (!editActionForm.morada) return alert("Escreve uma morada primeiro.");
@@ -198,7 +235,6 @@ export const UserActions = ({ token }: UserActionsProps) => {
                                                         <span className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold text-slate-700">
                                                             🛡️ {squad.nomeSquad}
                                                         </span>
-                                                        {/* DATA E HORA SEPARADAS */}
                                                         {action.data_hora ? (
                                                             <>
                                                                 <span className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1">
@@ -252,7 +288,7 @@ export const UserActions = ({ token }: UserActionsProps) => {
             {/* MODAL: VER DETALHES DA ACTION & MAPA */}
             {selectedAction && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh] custom-scrollbar">
                         <div className="flex justify-between items-start mb-6">
                             <div>
                                 <h3 className="text-2xl font-bold text-slate-800">{selectedAction.titulo}</h3>
@@ -266,12 +302,48 @@ export const UserActions = ({ token }: UserActionsProps) => {
                         </div>
 
                         <div className="space-y-6">
+                            
+                            {/* --- NOVO: BLOCO DE ACEITAÇÃO DA FRENTE 1 --- */}
+                            <div className="p-5 border-2 border-slate-100 rounded-2xl bg-white shadow-sm">
+                                <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">🎯 Estado da Missão</h4>
+                                
+                                <div className="mb-6">
+                                    <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                                        <span>Progresso de Mobilização</span>
+                                        <span>{selectedAction.participations?.length || 0} Aceitaram</span>
+                                    </div>
+                                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                                        {/* A percentagem assume um target de 10 apenas para a demo visual, podes mudar a lógica */}
+                                        <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(((selectedAction.participations?.length || 0) / 10) * 100, 100)}%` }}></div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <button onClick={() => handleParticipate(selectedAction.id)} className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex justify-center items-center gap-2">
+                                        ✋ Aceitar Missão
+                                    </button>
+
+                                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-2">
+                                        <input 
+                                            type="url" 
+                                            placeholder="Cola aqui o link da prova fotográfica..." 
+                                            value={evidenceUrl}
+                                            onChange={(e) => setEvidenceUrl(e.target.value)}
+                                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-emerald-500"
+                                        />
+                                        <button onClick={() => handleSubmitEvidence(selectedAction.id)} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm shrink-0">
+                                            📸 Enviar Prova
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* --- FIM BLOCO FRENTE 1 --- */}
+
                             <div>
                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-2">Descrição da Missão</h4>
                                 <p className="text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">{selectedAction.descricao || "Nenhuma descrição fornecida."}</p>
                             </div>
 
-                            {/* O NOVO BLOCO DIVIDIDO DE DATA E HORA */}
                             <div className="flex gap-4">
                                 <div className="flex-1 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Data</h4>
